@@ -20,14 +20,58 @@ class Agent:
     def __init__(self):
         pass
 
-    def createSemanticNetwork(a, b, c):
+    def createSemanticNetwork(i, j, k):
 
-        # compare and determine if horizontal / vertical tranformation was used
-        a_b_transformation = {}
-        a_c_transformation = {}
+        # compare and determine if horizontal / vertical tranformation was used ?
+        # compare shape, fill, size
+        i_j_transformation = {}
+        j_k_transformation = {}
 
-    def test():
-        pass
+        # shape
+        if i['shape'] == j['shape']:
+            i_j_transformation.shape = 'unchanged'
+        else:
+            i_j_transformation.shape = i['shape'] +  ' -> ' + j['shape']
+
+        # fill
+        if i['fill'] == j['fill']:
+            i_j_transformation.fill = 'unchanged'
+        else:
+            i_j_transformation.fill = 'inverted'
+
+        # size
+        if i['size'] == j['size']:
+            i_j_transformation.size = 'unchanged'
+        else:
+            i_j_transformation.size = i['size'] + ' -> ' + j['size']
+
+        # now look at extra properties
+        # what if there's more than shape, fill, and size ? 
+   
+        # shape
+        if i['shape'] == k['shape']:
+            j_k_transformation.shape = 'unchanged'
+        else:
+            j_k_transformation.shape = i['shape'] +  ' -> ' + k['shape']
+
+        # fill
+        if i['fill'] == k['fill']:
+            j_k_transformation.fill = 'unchanged'
+        else:
+            j_k_transformation.fill = 'inverted'
+
+        # size
+        if i['size'] == k['size']:
+            j_k_transformation.size = 'unchanged'
+        else:
+            j_k_transformation.size = i['size'] + ' -> ' + k['size']
+
+        return [i_j_transformation, j_k_transformation]
+
+    def agentCompare(init_network, solution_network):
+
+        # how to intelligently compare two networks?
+        return -1
 
     # The primary method for solving incoming Raven's Progressive Matrices.
     # For each problem, your Agent's Solve() method will be called. At the
@@ -57,14 +101,26 @@ class Agent:
         a = problem.figures["A"].objects['a'].attributes
         b = problem.figures["B"].objects['b'].attributes
         c = problem.figures["C"].objects['c'].attributes
-        createSemanticNetwork(a, b, c)
 
-        problem.figures["1"].objects['d'].attributes
-        problem.figures["2"].objects['e'].attributes
-        problem.figures["3"].objects['f'].attributes
-        problem.figures["4"].objects['g'].attributes
-        problem.figures["5"].objects['h'].attributes
-        problem.figures["6"].objects['i'].attributes
+        _1 = problem.figures["1"].objects['d'].attributes
+        _2 = problem.figures["2"].objects['e'].attributes
+        _3 = problem.figures["3"].objects['f'].attributes
+        _4 = problem.figures["4"].objects['g'].attributes
+        _5 = problem.figures["5"].objects['h'].attributes
+        _6 = problem.figures["6"].objects['i'].attributes
 
+        # generate our initial semantic network to test against
+        init_network = createSemanticNetwork(a, b, c)
 
-        return [.05,.1,.11,.12,.13,.14,.15,.2]
+        # all possible solutions
+        solutions = [_1, _2, _3, _4, _5, _6]
+        scores = []
+
+        for solution in solutions:
+            # compare init_network with generated solutions
+            solution_network = createSemanticNetwork(b, c, solution)
+            score = agentCompare(init_network, solution_network)
+            scores.append(score)
+
+        problem.checkAnswer()
+        return scores
