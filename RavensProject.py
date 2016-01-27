@@ -7,8 +7,10 @@
 
 import os
 import sys
+import traceback
 from Agent import Agent
 from ProblemSet import ProblemSet
+import numpy as np
 
 # The main driver file for Project2. You may edit this file to change which
 # problems your Agent addresses while debugging and designing, but you should
@@ -50,7 +52,7 @@ def main():
                 correct_comfidence = 0
                 if type(problem.givenAnswer) is list:
                     answer = problem.givenAnswer
-                    if len(answer) >= problem.correctAnswer+1:
+                    if len(answer) >= problem.correctAnswer:
                         if sum(answer) > 1:
                             sum_answer = float(sum(answer))
                             answer = [i/sum_answer for i in answer]            
@@ -61,7 +63,8 @@ def main():
                 results.write("%s\n" % result)
             except:
                print("Error encountered in " + problem.name + ":")
-               print(sys.exc_info()[0])
+               #print(sys.exc_info()[0])
+               print(traceback.format_exc())
                result=problem.name + "," + str(problem.givenAnswer) + ",Error,"
                results.write("%s\n" % result)
         setResult=set.name + "," + str(sum_correct_comfidence)

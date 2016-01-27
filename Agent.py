@@ -10,6 +10,59 @@
 
 # Install Pillow and uncomment this line to access image processing.
 #from PIL import Image
+def createSemanticNetwork(i, j, k):
+
+    # compare and determine if horizontal / vertical tranformation was used ?
+    # compare shape, fill, size
+    i_j_transformation = {}
+    j_k_transformation = {}
+
+    # shape
+    if i['shape'] == j['shape']:
+        i_j_transformation['shape'] = 'unchanged'
+    else:
+        i_j_transformation['shape'] = i['shape'] +  ' -> ' + j['shape']
+
+    # fill
+    if i['fill'] == j['fill']:
+        i_j_transformation['fill'] = 'unchanged'
+    else:
+        i_j_transformation['fill'] = 'inverted'
+
+    # size
+    if i['size'] == j['size']:
+        i_j_transformation['size'] = 'unchanged'
+    else:
+        i_j_transformation['size'] = i['size'] + ' -> ' + j['size']
+
+    # now look at extra properties
+    # what if there's more than shape, fill, and size ? 
+
+    # shape
+    if i['shape'] == k['shape']:
+        j_k_transformation['shape'] = 'unchanged'
+    else:
+        j_k_transformation['shape'] = i['shape'] +  ' -> ' + k['shape']
+
+    # fill
+    if i['fill'] == k['fill']:
+        j_k_transformation['fill'] = 'unchanged'
+    else:
+        j_k_transformation['fill'] = 'inverted'
+
+    # size
+    if i['size'] == k['size']:
+        j_k_transformation['size'] = 'unchanged'
+    else:
+        j_k_transformation['size'] = i['size'] + ' -> ' + k['size']
+
+    return [i_j_transformation, j_k_transformation]
+
+def agentCompare(init_network, solution_network):
+    shared_items1 = set(init_network[0].items()) & set(solution_network[0].items())
+    shared_items2 = set(init_network[1].items()) & set(solution_network[1].items())
+    return len(shared_items1) + len(shared_items2)
+
 
 class Agent:
     # The default constructor for your Agent. Make sure to execute any
@@ -20,82 +73,10 @@ class Agent:
     def __init__(self):
         pass
 
-    def createSemanticNetwork(i, j, k):
-
-        # compare and determine if horizontal / vertical tranformation was used ?
-        # compare shape, fill, size
-        i_j_transformation = {}
-        j_k_transformation = {}
-
-        # shape
-        if i['shape'] == j['shape']:
-            i_j_transformation.shape = 'unchanged'
-        else:
-            i_j_transformation.shape = i['shape'] +  ' -> ' + j['shape']
-
-        # fill
-        if i['fill'] == j['fill']:
-            i_j_transformation.fill = 'unchanged'
-        else:
-            i_j_transformation.fill = 'inverted'
-
-        # size
-        if i['size'] == j['size']:
-            i_j_transformation.size = 'unchanged'
-        else:
-            i_j_transformation.size = i['size'] + ' -> ' + j['size']
-
-        # now look at extra properties
-        # what if there's more than shape, fill, and size ? 
-   
-        # shape
-        if i['shape'] == k['shape']:
-            j_k_transformation.shape = 'unchanged'
-        else:
-            j_k_transformation.shape = i['shape'] +  ' -> ' + k['shape']
-
-        # fill
-        if i['fill'] == k['fill']:
-            j_k_transformation.fill = 'unchanged'
-        else:
-            j_k_transformation.fill = 'inverted'
-
-        # size
-        if i['size'] == k['size']:
-            j_k_transformation.size = 'unchanged'
-        else:
-            j_k_transformation.size = i['size'] + ' -> ' + k['size']
-
-        return [i_j_transformation, j_k_transformation]
-
-    def agentCompare(init_network, solution_network):
-
-        # how to intelligently compare two networks?
-        return -1
-
-    # The primary method for solving incoming Raven's Progressive Matrices.
-    # For each problem, your Agent's Solve() method will be called. At the
-    # conclusion of Solve(), your Agent should return a list representing its
-    # confidence on each of the answers to the question: for example 
-    # [.1,.1,.1,.1,.5,.1] for 6 answer problems or [.3,.2,.1,.1,0,0,.2,.1] for 8 answer problems.
-    #
-    # In addition to returning your answer at the end of the method, your Agent
-    # may also call problem.checkAnswer(int givenAnswer). The parameter
-    # passed to checkAnswer should be your Agent's current guess for the
-    # problem; checkAnswer will return the correct answer to the problem. This
-    # allows your Agent to check its answer. Note, however, that after your
-    # agent has called checkAnswer, it will *not* be able to change its answer.
-    # checkAnswer is used to allow your Agent to learn from its incorrect
-    # answers; however, your Agent cannot change the answer to a question it
-    # has already answered.
-    #
-    # If your Agent calls checkAnswer during execution of Solve, the answer it
-    # returns will be ignored; otherwise, the answer returned at the end of
-    # Solve will be taken as your Agent's answer to this problem.
-    #
-    # Make sure to return your answer *as an integer* at the end of Solve().
-    # Returning your answer as a string may cause your program to crash.
     def Solve(self,problem):
+
+        if problem.problemType == '3x3':
+            return -1
 
         # RavensProblem.RavensFigure.RavensObject
         a = problem.figures["A"].objects['a'].attributes
@@ -122,5 +103,11 @@ class Agent:
             score = agentCompare(init_network, solution_network)
             scores.append(score)
 
-        problem.checkAnswer()
-        return scores
+        t = float(sum(scores))
+        out = [x/t for x in scores]
+        
+        print(out)
+        print('given answer: ' + str(scores.index(max(scores)) + 1))
+        print('actual answer: ' + str(problem.checkAnswer(out)))
+
+        return out

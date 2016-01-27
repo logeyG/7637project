@@ -1,49 +1,25 @@
 Problem,Correct Confidence
-Basic Problem B-01,0.1
-Basic Problem B-02,0.13
-Basic Problem B-03,0.05
-Basic Problem B-04,0.11
-Basic Problem B-05,0.12
-Basic Problem B-06,0.13
-Basic Problem B-07,0.14
-Basic Problem B-08,0.14
-Basic Problem B-09,0.13
-Basic Problem B-10,0.11
-Basic Problem B-11,0.05
-Basic Problem B-12,0.05
-Basic Problem C-01,0.11
-Basic Problem C-02,0.12
-Basic Problem C-03,0.12
-Basic Problem C-04,0
-Basic Problem C-05,0.11
-Basic Problem C-06,0.15
-Basic Problem C-07,0.1
-Basic Problem C-08,-1,Error,
-Basic Problem C-09,0.1
-Basic Problem C-10,0.15
-Basic Problem C-11,0.12
-Basic Problem C-12,0
-Challenge Problem B-01,-1,Error,
-Challenge Problem B-02,-1,Error,
-Challenge Problem B-03,-1,Error,
-Challenge Problem B-04,-1,Error,
-Challenge Problem B-05,-1,Error,
-Challenge Problem B-06,-1,Error,
-Challenge Problem B-07,-1,Error,
-Challenge Problem B-08,-1,Error,
-Challenge Problem B-09,-1,Error,
-Challenge Problem B-10,-1,Error,
-Challenge Problem B-11,-1,Error,
-Challenge Problem B-12,-1,Error,
-Challenge Problem C-01,-1,Error,
-Challenge Problem C-02,-1,Error,
-Challenge Problem C-03,-1,Error,
-Challenge Problem C-04,-1,Error,
-Challenge Problem C-05,-1,Error,
-Challenge Problem C-06,-1,Error,
-Challenge Problem C-07,-1,Error,
-Challenge Problem C-08,-1,Error,
-Challenge Problem C-09,-1,Error,
-Challenge Problem C-10,-1,Error,
-Challenge Problem C-11,-1,Error,
-Challenge Problem C-12,-1,Error,
+Basic Problem B-01,0.1935483870967742
+Basic Problem B-02,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Basic Problem B-03,0.1875
+Basic Problem B-04,0.16666666666666666
+Basic Problem B-05,0.18518518518518517
+Basic Problem B-06,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Basic Problem B-07,0.18518518518518517
+Basic Problem B-08,0.21739130434782608
+Basic Problem B-09,0.21739130434782608
+Basic Problem B-10,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Basic Problem B-11,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Basic Problem B-12,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Challenge Problem B-01,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Challenge Problem B-02,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Challenge Problem B-03,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Challenge Problem B-04,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Challenge Problem B-05,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Challenge Problem B-06,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Challenge Problem B-07,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Challenge Problem B-08,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Challenge Problem B-09,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Challenge Problem B-10,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Challenge Problem B-11,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Challenge Problem B-12,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,

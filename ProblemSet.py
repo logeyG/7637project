@@ -11,6 +11,7 @@ import os
 from RavensFigure import RavensFigure
 from RavensObject import RavensObject
 from RavensProblem import RavensProblem
+import numpy as np
 
 # A list of RavensProblems within one set.
 #

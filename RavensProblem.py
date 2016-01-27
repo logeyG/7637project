@@ -5,6 +5,8 @@
 
 # A single Raven's Progressive Matrix problem, represented by a type (2x2
 # or 3x3), a String name, and a dictionary of figures.
+import numpy as np
+
 class RavensProblem:
     # Initializes a new Raven's Progressive Matrix problem given a name, a
     # type, and a correct answer to the problem. Also initializes a blank
@@ -67,7 +69,7 @@ class RavensProblem:
         # directly, your code will crash. Only access the correct answer via the
         # checkAnswer method, supplied below, or by returning a number at the end
         # of your agent's Solve method.
-        self.givenAnswer=-1
+        self.givenAnswer=[.125,.125,.125,.125,.125,.125,.125,.125]
 
     # Returns the correct answer to the problem.
     #
@@ -89,6 +91,7 @@ class RavensProblem:
     #
     # Your agent does not need to use this method.
     def setAnswerReceived(self, givenAnswer):
+        givenAnswer = list(givenAnswer)
         if not self.answerReceived:
             self.answerReceived=True
             self.givenAnswer=givenAnswer
