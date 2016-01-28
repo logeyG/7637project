@@ -11,22 +11,35 @@
 # Install Pillow and uncomment this line to access image processing.
 # from PIL import Image
 
-relational_keywords = ['inside']
+relational_keywords = ['inside', 'above', 'below']
+
+
+def excludeByProperty(d, prop):
+    for key, value in d.items():
+        if prop not in value.attributes:
+            return value
+
+
+def findByProperty(d, prop):
+    for key, value in d.items():
+        if prop in value.attributes:
+            return value
 
 
 def createSemanticNetwork(i, j):
-
     # construct a semantic network showing the transformation that occured
     # between frame i -> j
     tranformation = {}
-
     # loop through all shapes in i
     for key, value in i.items():
         if 'inside' in value.attributes:
+            # match this shape with the shape containing 'inside' in the other object
+            match = findByProperty(j, 'inside')
 
-            # loop through all shapes in j
-    for key, value in i.items():
-        pass
+            # we've found matches, now lets loop through their attributes and see what transformed
+        else:
+            # this is another shape that is not inside, match this with corresponding
+            match2 = excludeByProperty(j, 'inside')
 
     if i['shape'] == j['shape']:
         transformation['shape'] = 'unchanged'
