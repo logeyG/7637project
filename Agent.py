@@ -11,55 +11,39 @@
 # Install Pillow and uncomment this line to access image processing.
 # from PIL import Image
 
+relational_keywords = ['inside']
 
-def createSemanticNetwork(i, j, k):
 
-    # compare and determine if horizontal / vertical tranformation was used ?
-    # compare shape, fill, size
-    i_j_transformation = {}
-    j_k_transformation = {}
+def createSemanticNetwork(i, j):
 
-    # shape
+    # construct a semantic network showing the transformation that occured
+    # between frame i -> j
+    tranformation = {}
+
+    # loop through all shapes in i
+    for key, value in i.items():
+        if 'inside' in value.attributes:
+
+            # loop through all shapes in j
+    for key, value in i.items():
+        pass
+
     if i['shape'] == j['shape']:
-        i_j_transformation['shape'] = 'unchanged'
+        transformation['shape'] = 'unchanged'
     else:
-        i_j_transformation['shape'] = i['shape'] + ' -> ' + j['shape']
+        transformation['shape'] = i['shape'] + ' -> ' + j['shape']
 
-    # fill
     if i['fill'] == j['fill']:
-        i_j_transformation['fill'] = 'unchanged'
+        transformation['fill'] = 'unchanged'
     else:
-        i_j_transformation['fill'] = 'inverted'
+        transformation['fill'] = 'inverted'
 
-    # size
     if i['size'] == j['size']:
-        i_j_transformation['size'] = 'unchanged'
+        transformation['size'] = 'unchanged'
     else:
-        i_j_transformation['size'] = i['size'] + ' -> ' + j['size']
-    # shape
+        transformation['size'] = i['size'] + ' -> ' + j['size']
 
-    # now look at extra properties
-    # what if there's more than shape, fill, and size ?
-
-    # shape
-    if i['shape'] == k['shape']:
-        j_k_transformation['shape'] = 'unchanged'
-    else:
-        j_k_transformation['shape'] = i['shape'] + ' -> ' + k['shape']
-
-    # fill
-    if i['fill'] == k['fill']:
-        j_k_transformation['fill'] = 'unchanged'
-    else:
-        j_k_transformation['fill'] = 'inverted'
-
-    # size
-    if i['size'] == k['size']:
-        j_k_transformation['size'] = 'unchanged'
-    else:
-        j_k_transformation['size'] = i['size'] + ' -> ' + k['size']
-
-    return [i_j_transformation, j_k_transformation]
+    return tranformation
 
 
 def agentCompare(init_network, solution_network):
@@ -107,20 +91,20 @@ class Agent:
         if problem.name != 'Basic Problem B-02':
             return -1
 
-        # RavensProblem.RavensFigure.RavensObject
-        a = problem.figures["A"].objects['a'].attributes
-        b = problem.figures["B"].objects['b'].attributes
-        c = problem.figures["C"].objects['c'].attributes
+        a = problem.figures["A"].objects
+        b = problem.figures["B"].objects
+        c = problem.figures["C"].objects
 
-        _1 = problem.figures["1"].objects['d'].attributes
-        _2 = problem.figures["2"].objects['e'].attributes
-        _3 = problem.figures["3"].objects['f'].attributes
-        _4 = problem.figures["4"].objects['g'].attributes
-        _5 = problem.figures["5"].objects['h'].attributes
-        _6 = problem.figures["6"].objects['i'].attributes
+        _1 = problem.figures["1"].objects
+        _2 = problem.figures["2"].objects
+        _3 = problem.figures["3"].objects
+        _4 = problem.figures["4"].objects
+        _5 = problem.figures["5"].objects
+        _6 = problem.figures["6"].objects
 
         # generate our initial semantic network to test against
-        init_network = createSemanticNetwork(a, b, c)
+        init_network = [createSemanticNetwork(
+            a, b), createSemanticNetwork(a, c)]
 
         # all possible solutions
         solutions = [_1, _2, _3, _4, _5, _6]
@@ -128,7 +112,8 @@ class Agent:
 
         for solution in solutions:
             # compare init_network with generated solutions
-            solution_network = createSemanticNetwork(solution, b, c)
+            solution_network = [createSemanticNetwork(
+                c, solution), createSemanticNetwork(b, solution)]
             score = agentCompare(init_network, solution_network)
             scores.append(score)
 
