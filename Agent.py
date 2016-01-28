@@ -9,7 +9,9 @@
 # These methods will be necessary for the project's main method to run.
 
 # Install Pillow and uncomment this line to access image processing.
-#from PIL import Image
+# from PIL import Image
+
+
 def createSemanticNetwork(i, j, k):
 
     # compare and determine if horizontal / vertical tranformation was used ?
@@ -21,7 +23,7 @@ def createSemanticNetwork(i, j, k):
     if i['shape'] == j['shape']:
         i_j_transformation['shape'] = 'unchanged'
     else:
-        i_j_transformation['shape'] = i['shape'] +  ' -> ' + j['shape']
+        i_j_transformation['shape'] = i['shape'] + ' -> ' + j['shape']
 
     # fill
     if i['fill'] == j['fill']:
@@ -34,15 +36,16 @@ def createSemanticNetwork(i, j, k):
         i_j_transformation['size'] = 'unchanged'
     else:
         i_j_transformation['size'] = i['size'] + ' -> ' + j['size']
+    # shape
 
     # now look at extra properties
-    # what if there's more than shape, fill, and size ? 
+    # what if there's more than shape, fill, and size ?
 
     # shape
     if i['shape'] == k['shape']:
         j_k_transformation['shape'] = 'unchanged'
     else:
-        j_k_transformation['shape'] = i['shape'] +  ' -> ' + k['shape']
+        j_k_transformation['shape'] = i['shape'] + ' -> ' + k['shape']
 
     # fill
     if i['fill'] == k['fill']:
@@ -58,9 +61,31 @@ def createSemanticNetwork(i, j, k):
 
     return [i_j_transformation, j_k_transformation]
 
+
 def agentCompare(init_network, solution_network):
-    shared_items1 = set(init_network[0].items()) & set(solution_network[0].items())
-    shared_items2 = set(init_network[1].items()) & set(solution_network[1].items())
+
+    print('horizontal')
+    print('a -> b')
+    print(init_network[0])
+    print('c -> solution')
+    print(solution_network[1])
+    print('\n')
+    print('vertical')
+    print('a -> c')
+    print(init_network[1])
+    print('b -> solution')
+    print(solution_network[0])
+    print('\n')
+
+    shared_items1 = set(init_network[0].items()) & set(
+        solution_network[1].items())
+
+    shared_items2 = set(init_network[1].items()) & set(
+        solution_network[0].items())
+
+    print(str(len(shared_items1)) + ' matches horizontally')
+    print(str(len(shared_items2)) + ' matches vertically')
+
     return len(shared_items1) + len(shared_items2)
 
 
@@ -69,13 +94,17 @@ class Agent:
     # processing necessary before your Agent starts solving problems here.
     #
     # Do not add any variables to this signature; they will not be used by
-    # main().
+    # main().]
+
     def __init__(self):
         pass
 
-    def Solve(self,problem):
+    def Solve(self, problem):
 
         if problem.problemType == '3x3':
+            return -1
+
+        if problem.name != 'Basic Problem B-02':
             return -1
 
         # RavensProblem.RavensFigure.RavensObject
@@ -99,13 +128,13 @@ class Agent:
 
         for solution in solutions:
             # compare init_network with generated solutions
-            solution_network = createSemanticNetwork(b, c, solution)
+            solution_network = createSemanticNetwork(solution, b, c)
             score = agentCompare(init_network, solution_network)
             scores.append(score)
 
         t = float(sum(scores))
-        out = [x/t for x in scores]
-        
+        out = [x / t for x in scores]
+
         print(out)
         print('given answer: ' + str(scores.index(max(scores)) + 1))
         print('actual answer: ' + str(problem.checkAnswer(out)))
