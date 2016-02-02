@@ -14,49 +14,61 @@
 relational_keywords = ['inside', 'above', 'below']
 
 
-def excludeByProperty(d, prop):
-    for key, value in d.items():
-        if prop not in value.attributes:
-            return value
-
-
 def findByProperty(d, prop):
-    for key, value in d.items():
-        if prop in value.attributes:
-            return value
+
+    for objectName in d.objects:
+        thisObject = d.objects[objectName]
+        if prop in thisObject.attributes
+            return thisObject
+
+
+def excludeByProperty(d, prop):
+
+    for objectName in d.objects:
+        thisObject = d.objects[objectName]
+        if prop not in thisObject.attributes
+            return thisObject
+
+
+def createTransformationNetwork(standardObjects, relationalObjects):
+
+    for
 
 
 def createSemanticNetwork(i, j):
     # construct a semantic network showing the transformation that occured
     # between frame i -> j
-    tranformation = {}
-    # loop through all shapes in i
-    for key, value in i.items():
-        if 'inside' in value.attributes:
-            # match this shape with the shape containing 'inside' in the other object
-            match = findByProperty(j, 'inside')
+    transformation = {}
 
-            # we've found matches, now lets loop through their attributes and see what transformed
-        else:
-            # this is another shape that is not inside, match this with corresponding
-            match2 = excludeByProperty(j, 'inside')
+    # only one shape, no need to match by attributes
+    if len(i) == 1 and len(j) == 1:
+        transformation = createTransformationNetwork(standardObjects, relationalObjects)
 
-    if i['shape'] == j['shape']:
-        transformation['shape'] = 'unchanged'
+    # 2 shapes, need to match by attributes, e.g. 'inside', 'outside'
     else:
-        transformation['shape'] = i['shape'] + ' -> ' + j['shape']
 
-    if i['fill'] == j['fill']:
-        transformation['fill'] = 'unchanged'
-    else:
-        transformation['fill'] = 'inverted'
+        relational_keyword = None
+        relationalObjects = []
+        standardObjects = []
 
-    if i['size'] == j['size']:
-        transformation['size'] = 'unchanged'
-    else:
-        transformation['size'] = i['size'] + ' -> ' + j['size']
+        # get relational matches first
+        for objectName in i.objects:
+            thisObject = i.objects[objectName]
 
-    return tranformation
+            for attributeName in thisObject.attributes:
+                attributeValue = thisObject.attributes[attributeName]
+
+                if attributeValue == 'inside':
+                    relational_keyword = 'inside'
+                    relationalObject = findByProperty(j, 'inside')
+                    relationalObjects.append(thisObject)
+                    relationalObjects.append(relationalObject)
+
+        standardObjects.append(excludeByProperty(i, relational_keyword))
+        standardObjects.append(excludeByProperty(j, relational_keyword))
+        transformation = createTransformationNetwork(standardObjects, relationalObjects)
+
+    return transformation
 
 
 def agentCompare(init_network, solution_network):
@@ -99,21 +111,21 @@ class Agent:
     def Solve(self, problem):
 
         if problem.problemType == '3x3':
-            return -1
+            return [0, 0, 0, 0, 0, 0]
 
         if problem.name != 'Basic Problem B-02':
-            return -1
+            return [0, 0, 0, 0, 0, 0]
 
-        a = problem.figures["A"].objects
-        b = problem.figures["B"].objects
-        c = problem.figures["C"].objects
+        a = problem.figures["A"]
+        b = problem.figures["B"]
+        c = problem.figures["C"]
 
-        _1 = problem.figures["1"].objects
-        _2 = problem.figures["2"].objects
-        _3 = problem.figures["3"].objects
-        _4 = problem.figures["4"].objects
-        _5 = problem.figures["5"].objects
-        _6 = problem.figures["6"].objects
+        _1 = problem.figures["1"]
+        _2 = problem.figures["2"]
+        _3 = problem.figures["3"]
+        _4 = problem.figures["4"]
+        _5 = problem.figures["5"]
+        _6 = problem.figures["6"]
 
         # generate our initial semantic network to test against
         init_network = [createSemanticNetwork(
@@ -124,9 +136,11 @@ class Agent:
         scores = []
 
         for solution in solutions:
+
             # compare init_network with generated solutions
             solution_network = [createSemanticNetwork(
                 c, solution), createSemanticNetwork(b, solution)]
+
             score = agentCompare(init_network, solution_network)
             scores.append(score)
 
