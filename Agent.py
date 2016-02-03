@@ -11,14 +11,11 @@
 # Install Pillow and uncomment this line to access image processing.
 # from PIL import Image
 
-relational_keywords = ['inside', 'above', 'below']
-
-
 def findByProperty(d, prop):
 
     for objectName in d.objects:
         thisObject = d.objects[objectName]
-        if prop in thisObject.attributes
+        if prop in thisObject.attributes:
             return thisObject
 
 
@@ -26,23 +23,45 @@ def excludeByProperty(d, prop):
 
     for objectName in d.objects:
         thisObject = d.objects[objectName]
-        if prop not in thisObject.attributes
+        if prop not in thisObject.attributes:
             return thisObject
 
+def transformUtility(transformationDict, prop, obj1, obj2):
 
-def createTransformationNetwork(standardObjects, relationalObjects):
+    if prop in obj1.objects.attributes and prop in obj2.attributes:
+        if obj1.attributes[prop] == obj2.attributes[prop]:
+            transformationDict[prop] = 'unchanged'
+        else:
+            transformationDict[prop] = obj1.attributes[prop] + '->' + obj2.attributes[prop]
 
-    for
+def createSingleTransformationNetwork(object1, object2):
+
+    transformation = {}
+
+    for prop in ['shape', 'size', 'fill', 'angle']:
+        transformUtility(transformation, prop, object1, object2)
+
+    return transformation
+
+def createDoubleTransformationNetwork(standardObjects, relationalObjects):
+
+    standardTransformation = {}
+    relationalTransformation = {}
+
+    for prop in ['shape', 'size', 'fill', 'angle']:
+        transformUtility(standardTransformation, prop, standardObjects[0], standardObjects[1])
+        transformUtility(relationalTransformation, prop, relationalObjects[0], relationalObjects[1])
+
+    return [standardTransformation, relationalTransformation]
 
 
 def createSemanticNetwork(i, j):
-    # construct a semantic network showing the transformation that occured
+    # construct a semantic network showing the transformation that occurred
     # between frame i -> j
-    transformation = {}
-
     # only one shape, no need to match by attributes
-    if len(i) == 1 and len(j) == 1:
-        transformation = createTransformationNetwork(standardObjects, relationalObjects)
+    if len(i.objects) == 1 and len(j.objects) == 1:
+        transformation = createSingleTransformationNetwork(i, j)
+        return transformation
 
     # 2 shapes, need to match by attributes, e.g. 'inside', 'outside'
     else:
@@ -66,9 +85,8 @@ def createSemanticNetwork(i, j):
 
         standardObjects.append(excludeByProperty(i, relational_keyword))
         standardObjects.append(excludeByProperty(j, relational_keyword))
-        transformation = createTransformationNetwork(standardObjects, relationalObjects)
-
-    return transformation
+        transformations = createDoubleTransformationNetwork(standardObjects, relationalObjects)
+        return transformations
 
 
 def agentCompare(init_network, solution_network):
@@ -111,10 +129,10 @@ class Agent:
     def Solve(self, problem):
 
         if problem.problemType == '3x3':
-            return [0, 0, 0, 0, 0, 0]
+            return [.1, .1, .1, .1, .1, .1]
 
-        if problem.name != 'Basic Problem B-02':
-            return [0, 0, 0, 0, 0, 0]
+        if problem.name != 'Basic Problem B-01':
+            return [.1, .1, .1, .1, .1, .1]
 
         a = problem.figures["A"]
         b = problem.figures["B"]
