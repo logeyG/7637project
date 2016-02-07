@@ -11,109 +11,190 @@
 # Install Pillow and uncomment this line to access image processing.
 # from PIL import Image
 
-def findByProperty(d, prop):
+# http://blog.lexique-du-net.com/index.php?post/Calculate-the-real-difference-between-two-angles-keeping-the-sign
+def calcDistanceBetweenTwoAngles(angle1, angle2):
 
-    for objectName in d.objects:
-        thisObject = d.objects[objectName]
-        if prop in thisObject.attributes:
+    angle1 = int(angle1)
+    angle2 = int(angle2)
+
+    difference = angle2 - angle1
+
+    if difference < -180:
+        difference += 360
+    if difference > 180:
+        difference -= 360
+
+    return abs(difference)
+
+def calcAlignment(keyword1, keyword2, orientation):
+
+    if orientation == 'horizontal':
+        if keyword1 == 'bottom-right' and keyword2 == 'bottom-left':
+            return 'mirrored'
+        elif keyword1 == 'top-right' and keyword2 == 'top-left':
+            return 'mirrored'
+        else:
+            return keyword1 + '->' + keyword2
+
+    elif orientation == 'vertical':
+        if keyword1 == 'bottom-right' and keyword2 == 'top-right':
+            return 'mirrored'
+        elif keyword1 == 'bottom-left' and keyword2 == 'top-left':
+            return 'mirrored'
+        else:
+            return keyword1 + '->' + keyword2
+
+def findByAttribute(figure, attribute):
+
+    for objectName in figure.objects:
+        thisObject = figure.objects[objectName]
+        if attribute in thisObject.attributes:
             return thisObject
 
+def getFirstItem(ravensFigure):
+    return next (iter (ravensFigure.objects.values()))
 
-def excludeByProperty(d, prop):
+def excludeByAttribute(figure, attribute):
 
-    for objectName in d.objects:
-        thisObject = d.objects[objectName]
-        if prop not in thisObject.attributes:
+    for objectName in figure.objects:
+        thisObject = figure.objects[objectName]
+        if attribute not in thisObject.attributes:
             return thisObject
+
 
 def transformUtility(transformationDict, prop, obj1, obj2):
 
-    if prop in obj1.objects.attributes and prop in obj2.attributes:
+    if prop in obj1.attributes and prop in obj2.attributes:
         if obj1.attributes[prop] == obj2.attributes[prop]:
             transformationDict[prop] = 'unchanged'
         else:
-            transformationDict[prop] = obj1.attributes[prop] + '->' + obj2.attributes[prop]
 
-def createSingleTransformationNetwork(object1, object2):
+            if prop == 'angle':
+                transformationDict[prop] = calcDistanceBetweenTwoAngles(obj1.attributes[prop], obj2.attributes[prop])
+            elif prop == 'alignment':
+                transformationDict[prop] = calcAlignment(obj1.attributes[prop],
+                                                         obj2.attributes[prop], transformationDict['orientation'])
+            else:
+                transformationDict[prop] = obj1.attributes[prop] + '->' + obj2.attributes[prop]
 
-    transformation = {}
+def createSingleTransformationNetwork(figure1, figure2, orientation):
 
-    for prop in ['shape', 'size', 'fill', 'angle']:
-        transformUtility(transformation, prop, object1, object2)
+    transformation = dict()
+    transformation['orientation'] = orientation
+    transformation['type'] = 'single'
 
+    for prop in ['shape', 'size', 'fill', 'angle', 'alignment']:
+        transformUtility(transformation, prop, getFirstItem(figure1), getFirstItem(figure2))
     return transformation
 
-def createDoubleTransformationNetwork(standardObjects, relationalObjects):
+def createDoubleTransformationNetwork(master_figures, relational_figures, orientation):
 
-    standardTransformation = {}
-    relationalTransformation = {}
+    transformations = dict()
+    transformations['type'] = 'multiple'
 
-    for prop in ['shape', 'size', 'fill', 'angle']:
-        transformUtility(standardTransformation, prop, standardObjects[0], standardObjects[1])
-        transformUtility(relationalTransformation, prop, relationalObjects[0], relationalObjects[1])
+    master_transformation = dict()
+    master_transformation['orientation'] = orientation
 
-    return [standardTransformation, relationalTransformation]
+    relational_transformation = dict()
+    relational_transformation['orientation'] = orientation
+
+    for prop in ['shape', 'size', 'fill', 'angle', 'alignment']:
+
+        transformUtility(master_transformation, prop, master_figures[0], master_figures[1])
+
+        if len(relational_figures) <= 1:
+            relational_transformation['transformation'] = 'removed'
+        else:
+            transformUtility(relational_transformation, prop, relational_figures[0], relational_figures[1])
+
+    transformations['master'] = master_transformation
+    transformations['relational'] = relational_transformation
+    return transformations
 
 
-def createSemanticNetwork(i, j):
-    # construct a semantic network showing the transformation that occurred
-    # between frame i -> j
-    # only one shape, no need to match by attributes
-    if len(i.objects) == 1 and len(j.objects) == 1:
-        transformation = createSingleTransformationNetwork(i, j)
+def createSemanticNetwork(figure_i, figure_j, orientation):
+    # construct a semantic network showing the transformation that occurred between figure i -> j
+    if len(figure_i.objects) == 1 and len(figure_j.objects) == 1:
+        transformation = createSingleTransformationNetwork(figure_i, figure_j, orientation)
         return transformation
 
-    # 2 shapes, need to match by attributes, e.g. 'inside', 'outside'
+    # 2 shapes, need to match by attributes, e.g. 'inside'
     else:
 
         relational_keyword = None
-        relationalObjects = []
-        standardObjects = []
+        relational_figures = []
+        master_figures = []
 
         # get relational matches first
-        for objectName in i.objects:
-            thisObject = i.objects[objectName]
+        for objectName in figure_i.objects:
+            thisObject = figure_i.objects[objectName]
 
             for attributeName in thisObject.attributes:
-                attributeValue = thisObject.attributes[attributeName]
 
-                if attributeValue == 'inside':
+                if attributeName == 'inside':
                     relational_keyword = 'inside'
-                    relationalObject = findByProperty(j, 'inside')
-                    relationalObjects.append(thisObject)
-                    relationalObjects.append(relationalObject)
+                    relationalObject = findByAttribute(figure_j, 'inside')
+                    relational_figures.append(thisObject)
+                    relational_figures.append(relationalObject)
 
-        standardObjects.append(excludeByProperty(i, relational_keyword))
-        standardObjects.append(excludeByProperty(j, relational_keyword))
-        transformations = createDoubleTransformationNetwork(standardObjects, relationalObjects)
+        master_figures.append(excludeByAttribute(figure_i, relational_keyword))
+        master_figures.append(excludeByAttribute(figure_j, relational_keyword))
+
+        transformations = createDoubleTransformationNetwork(master_figures, relational_figures, orientation)
         return transformations
 
 
 def agentCompare(init_network, solution_network):
 
-    print('horizontal')
-    print('a -> b')
-    print(init_network[0])
-    print('c -> solution')
-    print(solution_network[1])
-    print('\n')
-    print('vertical')
-    print('a -> c')
-    print(init_network[1])
-    print('b -> solution')
-    print(solution_network[0])
-    print('\n')
+    if init_network[0]['type'] == 'single':
+        # print('a -> b')
+        # print(init_network[0])
+        # print('a -> c')
+        # print(init_network[1])
+        # print('\n')
+        #
+        # print('c -> solution')
+        # print(solution_network[0])
+        # print('b -> solution')
+        # print(solution_network[1])
+        # print('\n')
 
-    shared_items1 = set(init_network[0].items()) & set(
-        solution_network[1].items())
+        shared_items1 = set(init_network[0].items()) & set(
+            solution_network[0].items())
 
-    shared_items2 = set(init_network[1].items()) & set(
-        solution_network[0].items())
+        shared_items2 = set(init_network[1].items()) & set(
+            solution_network[1].items())
 
-    print(str(len(shared_items1)) + ' matches horizontally')
-    print(str(len(shared_items2)) + ' matches vertically')
+        # print(str(len(shared_items1)) + ' matches horizontally')
+        # print(str(len(shared_items2)) + ' matches vertically')
 
-    return len(shared_items1) + len(shared_items2)
+        return len(shared_items1) + len(shared_items2)
+
+    else:
+
+        print('a -> b')
+        print(init_network[0]['master'])
+        print(init_network[0]['relational'])
+        print('a -> c')
+        print(init_network[1]['master'])
+        print(init_network[1]['relational'])
+        print('\n')
+
+        print('c -> solution')
+        print(solution_network[0]['master'])
+        print(solution_network[0]['relational'])
+        print('b -> solution')
+        print(solution_network[1]['master'])
+        print(solution_network[1]['relational'])
+        print('\n')
+
+        master_shared1 = set(init_network[0]['master'].items() & solution_network[0]['master'].items())
+        master_shared2 = set(init_network[1]['master'].items() & solution_network[1]['master'].items())
+
+        relational_shared1 = set(init_network[0]['relational'].items() & solution_network[0]['relational'].items())
+        relational_shared2 = set(init_network[1]['relational'].items() & solution_network[1]['relational'].items())
+
+        return len(master_shared1) + len(master_shared2) + len(relational_shared1) + len(relational_shared2)
 
 
 class Agent:
@@ -128,10 +209,10 @@ class Agent:
 
     def Solve(self, problem):
 
+        print('solving problem ' + problem.name)
         if problem.problemType == '3x3':
             return [.1, .1, .1, .1, .1, .1]
-
-        if problem.name != 'Basic Problem B-01':
+        if problem.hasVerbal == False:
             return [.1, .1, .1, .1, .1, .1]
 
         a = problem.figures["A"]
@@ -147,17 +228,18 @@ class Agent:
 
         # generate our initial semantic network to test against
         init_network = [createSemanticNetwork(
-            a, b), createSemanticNetwork(a, c)]
+            a, b, 'horizontal'), createSemanticNetwork(a, c, 'vertical')]
 
         # all possible solutions
         solutions = [_1, _2, _3, _4, _5, _6]
         scores = []
 
         for solution in solutions:
-
+            print('\n')
+            print('comparing with solution ' + solution.name)
             # compare init_network with generated solutions
             solution_network = [createSemanticNetwork(
-                c, solution), createSemanticNetwork(b, solution)]
+                c, solution, 'horizontal'), createSemanticNetwork(b, solution, 'vertical')]
 
             score = agentCompare(init_network, solution_network)
             scores.append(score)

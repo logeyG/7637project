@@ -1,16 +1,16 @@
 Problem,Correct Confidence
-Basic Problem B-01,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
-Basic Problem B-02,0.1
-Basic Problem B-03,0.1
-Basic Problem B-04,0.1
-Basic Problem B-05,0.1
-Basic Problem B-06,0.1
-Basic Problem B-07,0.1
-Basic Problem B-08,0.1
-Basic Problem B-09,0.1
-Basic Problem B-10,0.1
-Basic Problem B-11,0.1
-Basic Problem B-12,0.1
+Basic Problem B-01,0.2
+Basic Problem B-02,0.2
+Basic Problem B-03,0.2033898305084746
+Basic Problem B-04,0.1875
+Basic Problem B-05,0.20689655172413793
+Basic Problem B-06,0.16923076923076924
+Basic Problem B-07,0.2
+Basic Problem B-08,0.21739130434782608
+Basic Problem B-09,0.21739130434782608
+Basic Problem B-10,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Basic Problem B-11,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Basic Problem B-12,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
 Challenge Problem B-01,0.1
 Challenge Problem B-02,0.1
 Challenge Problem B-03,0.1
