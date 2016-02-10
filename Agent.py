@@ -47,91 +47,78 @@ def calc_alignment(keyword1, keyword2, orientation):
             return keyword1 + '->' + keyword2
 
 
-def find_by_attribute(figure, attribute):
-
-    for objectName in figure.objects:
-        thisObject = figure.objects[objectName]
-        if attribute in thisObject.attributes:
-            return thisObject
-
-
 def get_first_item(figure):
     return next (iter (figure.objects.values()))
 
 
-def exclude_by_attribute(figure, attribute):
-
-    for objectName in figure.objects:
-        thisObject = figure.objects[objectName]
-        if attribute not in thisObject.attributes:
-            return thisObject
-
-
 def transform_utility(transformation_dict, prop, obj1, obj2):
+
+    t_key = obj1.name + '->' + obj2.name
+    transformation_dict[t_key] = {}
 
     if prop in obj1.attributes and prop in obj2.attributes:
         if obj1.attributes[prop] == obj2.attributes[prop]:
-            transformation_dict[prop] = 'unchanged'
+            transformation_dict[t_key][prop] = 'unchanged'
         else:
 
             if prop == 'angle':
-                transformation_dict[prop] = calc_distance_between_two_angles(obj1.attributes[prop], obj2.attributes[prop])
+                transformation_dict[t_key][prop] = calc_distance_between_two_angles(obj1.attributes[prop], obj2.attributes[prop])
             elif prop == 'alignment':
-                transformation_dict[prop] = calc_alignment(obj1.attributes[prop],
+                transformation_dict[t_key][prop] = calc_alignment(obj1.attributes[prop],
                                                          obj2.attributes[prop], transformation_dict['orientation'])
             else:
-                transformation_dict[prop] = obj1.attributes[prop] + '->' + obj2.attributes[prop]
+                transformation_dict[t_key][prop] = obj1.attributes[prop] + '->' + obj2.attributes[prop]
 
 
-def create_single_transformation_network(figure1, figure2, orientation):
+def create_transformation_network(figure_i, figure_j, figure_mapping, orientation):
 
     transformation = dict()
     transformation['orientation'] = orientation
-    transformation['type'] = 'single'
+    transformation['transformation'] = figure_i.name + '->' + figure_j.name
 
-    for prop in ['shape', 'size', 'fill', 'angle', 'alignment']:
-        transform_utility(transformation, prop, get_first_item(figure1), get_first_item(figure2))
+    for key, value in figure_mapping.items():
+        for prop in ['shape', 'size', 'fill', 'angle', 'alignment']:
+            transform_utility(transformation, prop, figure_i.objects[key], figure_j.objects[value])
+
     return transformation
 
 
-def create_double_transformation_network(master_figures, relational_figures, orientation):
+def find_partner_object_by_attribute(figure, relational_size, attributeName):
 
-    transformations = dict()
-    transformations['type'] = 'multiple'
+    for objectName in figure.objects:
+        thisObject = figure.objects[objectName]
 
-    master_transformation = dict()
-    master_transformation['orientation'] = orientation
+        if attributeName in thisObject.attributes:
+            if len(thisObject.attributes[attributeName].split(',')) == relational_size:
+                return thisObject.name
 
-    relational_transformation = dict()
-    relational_transformation['orientation'] = orientation
+    return None
 
-    for prop in ['shape', 'size', 'fill', 'angle', 'alignment']:
+def find_partner_object(figure, keywords):
 
-        transform_utility(master_transformation, prop, master_figures[0], master_figures[1])
+    for objectName in figure.objects:
+        thisObject = figure.objects[objectName]
+        for attributeName in thisObject.attributes:
 
-        if len(relational_figures) < 2:
-            relational_transformation['transformation'] = 'removed'
-        else:
-            transform_utility(relational_transformation, prop, relational_figures[0], relational_figures[1])
+             if attributeName not in keywords:
+                 return thisObject.name
 
-    transformations['master'] = master_transformation
-    transformations['relational'] = relational_transformation
-    return transformations
-
+    return None
 
 def create_semantic_network(figure_i, figure_j, orientation, title):
-    # construct a semantic network showing the transformation that occurred between figure i -> j
+
     if len(figure_i.objects) == 1 and len(figure_j.objects) == 1:
-        transformation = create_single_transformation_network(figure_i, figure_j, orientation)
+
+        figure_mapping = {}
+        figure_mapping[get_first_item(figure_i).name] = get_first_item(figure_j).name
+
+        transformation = create_transformation_network(figure_i, figure_j, figure_mapping, orientation)
         return transformation
 
-    # 2 shapes, need to match by attributes, e.g. 'inside'
     else:
 
         keywords = ['inside', 'above']
-        relational_keyword = None
-        relational_figures = []
-        master_figures = []
+        figure_mapping = {}
 
         # get relational matches first
         for objectName in figure_i.objects:
@@ -140,23 +127,18 @@ def create_semantic_network(figure_i, figure_j, orientation, title):
             for attributeName in thisObject.attributes:
 
                 if attributeName in keywords:
-                    relational_keyword = attributeName
-                    relationalObject = find_by_attribute(figure_j, attributeName)
-                    relational_figures.append(thisObject)
+                    relational_size = len(thisObject.attributes[attributeName].split(','))
+                    figure_mapping[objectName] = find_partner_object_by_attribute(figure_j,
+                                                                                  relational_size, attributeName)
+                else:
+                    figure_mapping[objectName] = find_partner_object(figure_j, keywords)
 
-                    if relationalObject is not None:
-                        relational_figures.append(relationalObject)
+        transformations = create_transformation_network(figure_i, figure_j, figure_mapping, orientation)
 
-        master_figures.append(exclude_by_attribute(figure_i, relational_keyword))
-        master_figures.append(exclude_by_attribute(figure_j, relational_keyword))
-
-        transformations = create_double_transformation_network(master_figures, relational_figures, orientation)
         return transformations
 
 
 def agent_compare(init_network, solution_network):
-
-    if init_network[0]['type'] == 'single':
 
         shared_items1 = set(init_network[0].items()) & set(
             solution_network[0].items())
@@ -165,16 +147,6 @@ def agent_compare(init_network, solution_network):
             solution_network[1].items())
 
         return len(shared_items1) + len(shared_items2)
-
-    else:
-
-        master_shared1 = set(init_network[0]['master'].items() & solution_network[0]['master'].items())
-        master_shared2 = set(init_network[1]['master'].items() & solution_network[1]['master'].items())
-
-        relational_shared1 = set(init_network[0]['relational'].items() & solution_network[0]['relational'].items())
-        relational_shared2 = set(init_network[1]['relational'].items() & solution_network[1]['relational'].items())
-
-        return len(master_shared1) + len(master_shared2) + len(relational_shared1) + len(relational_shared2)
 
 
 def normalize_scores(scores, semantic_network):
