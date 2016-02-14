@@ -54,7 +54,8 @@ def get_first_item(figure):
 def transform_utility(transformation_dict, prop, obj1, obj2):
 
     t_key = obj1.name + '->' + obj2.name
-    transformation_dict[t_key] = {}
+    if t_key not in transformation_dict:
+        transformation_dict[t_key] = {}
 
     if prop in obj1.attributes and prop in obj2.attributes:
         if obj1.attributes[prop] == obj2.attributes[prop]:
@@ -68,6 +69,7 @@ def transform_utility(transformation_dict, prop, obj1, obj2):
                                                          obj2.attributes[prop], transformation_dict['orientation'])
             else:
                 transformation_dict[t_key][prop] = obj1.attributes[prop] + '->' + obj2.attributes[prop]
+
 
 
 def create_transformation_network(figure_i, figure_j, figure_mapping, orientation):
@@ -98,12 +100,25 @@ def find_partner_object(figure, keywords):
 
     for objectName in figure.objects:
         thisObject = figure.objects[objectName]
-        for attributeName in thisObject.attributes:
-
-             if attributeName not in keywords:
-                 return thisObject.name
+        shared_keywords = set(thisObject.attributes) & set(keywords)
+        if len(shared_keywords) == 0:
+            return thisObject.name
 
     return None
+
+
+def find_partner_object_master(object, figure, keywords):
+
+    shared_keywords = set(object.attributes) & set(keywords)
+
+    if len(shared_keywords) > 0:
+
+        for attrib in shared_keywords:
+            relational_size = len(object.attributes[attrib].split(','))
+            return find_partner_object_by_attribute(figure, relational_size, attrib)
+
+    else:
+        return find_partner_object(figure, keywords)
 
 def create_semantic_network(figure_i, figure_j, orientation, title):
 
@@ -120,18 +135,9 @@ def create_semantic_network(figure_i, figure_j, orientation, title):
         keywords = ['inside', 'above']
         figure_mapping = {}
 
-        # get relational matches first
         for objectName in figure_i.objects:
             thisObject = figure_i.objects[objectName]
-
-            for attributeName in thisObject.attributes:
-
-                if attributeName in keywords:
-                    relational_size = len(thisObject.attributes[attributeName].split(','))
-                    figure_mapping[objectName] = find_partner_object_by_attribute(figure_j,
-                                                                                  relational_size, attributeName)
-                else:
-                    figure_mapping[objectName] = find_partner_object(figure_j, keywords)
+            figure_mapping[objectName] = find_partner_object_master(thisObject, figure_j, keywords)
 
         transformations = create_transformation_network(figure_i, figure_j, figure_mapping, orientation)
 
@@ -140,14 +146,47 @@ def create_semantic_network(figure_i, figure_j, orientation, title):
 
 def agent_compare(init_network, solution_network):
 
-        shared_items1 = set(init_network[0].items()) & set(
-            solution_network[0].items())
+    init_horizontal = []
+    init_vertical = []
 
-        shared_items2 = set(init_network[1].items()) & set(
-            solution_network[1].items())
+    solution_horizontal = []
+    solution_vertical = []
 
-        return len(shared_items1) + len(shared_items2)
+    for key, value in init_network[0].items():
+        if type(value) is dict:
+            init_horizontal.append(list(value.values()))
 
+    for key, value in init_network[1].items():
+        if type(value) is dict:
+            init_vertical.append(list(value.values()))
+
+    for key, value in solution_network[0].items():
+        if type(value) is dict:
+            solution_horizontal.append(list(value.values()))
+
+    for key, value in solution_network[1].items():
+        if type(value) is dict:
+            solution_vertical.append(list(value.values()))
+
+    # horizontal_set = set(horizontal[0].items())
+    # vertical_set = set(vertical[0].items())
+    #
+    # for horizontal in horizontal[1:]:
+    #     horizontal_set = horizontal_set & set(horizontal.items())
+    #
+    # for vertical in vertical[1:]:
+    #     vertical_set = vertical_set & set(vertical.items())
+
+    # shared_items1 = set(init_network[0].items()) & set(
+    #     solution_network[0].items())
+    #
+    # shared_items2 = set(init_network[1].items()) & set(
+    #     solution_network[1].items())
+
+    shared1 = set(init_horizontal) & set(solution_horizontal)
+    shared2 = set(init_vertical) & set(solution_vertical)
+
+    return len(shared1) + len(shared2)
 
 def normalize_scores(scores, semantic_network):
 
