@@ -71,131 +71,148 @@ def transform_utility(transformation_dict, prop, obj1, obj2):
                 transformation_dict[t_key][prop] = obj1.attributes[prop] + '->' + obj2.attributes[prop]
 
 
-
 def create_transformation_network(figure_i, figure_j, figure_mapping, orientation):
 
     transformation = dict()
     transformation['orientation'] = orientation
     transformation['transformation'] = figure_i.name + '->' + figure_j.name
+    transformation['mapping'] = figure_mapping
 
     for key, value in figure_mapping.items():
         for prop in ['shape', 'size', 'fill', 'angle', 'alignment']:
-            transform_utility(transformation, prop, figure_i.objects[key], figure_j.objects[value])
+
+            if value['type'] != 'removed':
+                transform_utility(transformation, prop, figure_i.objects[key], figure_j.objects[value['name']])
 
     return transformation
 
 
-def find_partner_object_by_attribute(figure, relational_size, attributeName):
+def find_partner_object_by_attribute(object, figure, relational_size, attributeName):
+
 
     for objectName in figure.objects:
         thisObject = figure.objects[objectName]
 
         if attributeName in thisObject.attributes:
             if len(thisObject.attributes[attributeName].split(',')) == relational_size:
-                return thisObject.name
 
-    return None
+                obj = dict()
+                obj['name'] = thisObject.name
+                obj['type'] = 'relational'
+                obj['keyword'] = attributeName
+                obj['size'] = relational_size
+                return obj
 
-def find_partner_object(figure, keywords):
+    # if didn't find anything there then just try a more generalized approach
+    for objectName in figure.objects:
+        thisObject = figure.objects[objectName]
+
+        if attributeName in thisObject.attributes:
+            obj = dict()
+            obj['name'] = thisObject.name
+            obj['type'] = 'relational'
+            obj['keyword'] = attributeName
+            obj['size'] = 1
+            return obj
+
+
+    obj = dict()
+    obj['name'] = ''
+    obj['type'] = 'removed'
+    return obj
+
+
+def find_partner_object(object, figure, keywords):
 
     for objectName in figure.objects:
         thisObject = figure.objects[objectName]
         shared_keywords = set(thisObject.attributes) & set(keywords)
         if len(shared_keywords) == 0:
-            return thisObject.name
+            obj = dict()
+            obj['name'] = thisObject.name
+            obj['type'] = 'master'
+            return obj
 
-    return None
+    obj = dict()
+    obj['name'] = ''
+    obj['type'] = 'removed'
+    return obj
 
-
-def find_partner_object_master(object, figure, keywords):
+def create_figure_mapping(object, figure, keywords):
 
     shared_keywords = set(object.attributes) & set(keywords)
 
     if len(shared_keywords) > 0:
-
         for attrib in shared_keywords:
             relational_size = len(object.attributes[attrib].split(','))
-            return find_partner_object_by_attribute(figure, relational_size, attrib)
+            return find_partner_object_by_attribute(object, figure, relational_size, attrib)
 
     else:
-        return find_partner_object(figure, keywords)
+        return find_partner_object(object, figure, keywords)
+
 
 def create_semantic_network(figure_i, figure_j, orientation, title):
 
-    if len(figure_i.objects) == 1 and len(figure_j.objects) == 1:
+    keywords = ['inside', 'above', 'overlap']
+    figure_mapping = {}
 
-        figure_mapping = {}
-        figure_mapping[get_first_item(figure_i).name] = get_first_item(figure_j).name
+    for objectName in figure_i.objects:
+        thisObject = figure_i.objects[objectName]
+        figure_mapping[objectName] = create_figure_mapping(thisObject, figure_j, keywords)
 
-        transformation = create_transformation_network(figure_i, figure_j, figure_mapping, orientation)
-        return transformation
+    transformations = create_transformation_network(figure_i, figure_j, figure_mapping, orientation)
+    transformations['mapping'] = figure_mapping
+    return transformations
 
-    else:
 
-        keywords = ['inside', 'above']
-        figure_mapping = {}
+def create_compare_figure_mapping(horizontal_mapping, vertical_mapping, init_network, solution_network):
+    # compare horizontal transformation
+    for key, value in init_network[0]['mapping'].items():
+        for key2, value2 in solution_network[0]['mapping'].items():
+            if value['type'] == value2['type']:
+                if value['type'] == 'relational':
+                    if value['keyword'] == value2['keyword'] and value['size'] == value2['size']:
+                        horizontal_mapping[key + '->' + value['name']] = key2 + '->' + value2['name']
+                elif value['type'] == 'master':
+                    horizontal_mapping[key + '->' + value['name']] = key2 + '->' + value2['name']
 
-        for objectName in figure_i.objects:
-            thisObject = figure_i.objects[objectName]
-            figure_mapping[objectName] = find_partner_object_master(thisObject, figure_j, keywords)
-
-        transformations = create_transformation_network(figure_i, figure_j, figure_mapping, orientation)
-
-        return transformations
+    # compare vertical transformation
+    for key, value in init_network[1]['mapping'].items():
+        for key2, value2 in solution_network[1]['mapping'].items():
+            if value['type'] == value2['type']:
+                if value['type'] == 'relational':
+                    if value['keyword'] == value2['keyword'] and value['size'] == value2['size']:
+                        vertical_mapping[key + '->' + value['name']] = key2 + '->' + value2['name']
+                elif value['type'] == 'master':
+                    vertical_mapping[key + '->' + value['name']] = key2 + '->' + value2['name']
 
 
 def agent_compare(init_network, solution_network):
 
-    init_horizontal = []
-    init_vertical = []
 
-    solution_horizontal = []
-    solution_vertical = []
+    horizontal_mapping = dict()
+    horizontal_score = 0
 
-    for key, value in init_network[0].items():
-        if type(value) is dict:
-            init_horizontal.append(list(value.values()))
+    vertical_mapping = dict()
+    vertical_score = 0
 
-    for key, value in init_network[1].items():
-        if type(value) is dict:
-            init_vertical.append(list(value.values()))
+    create_compare_figure_mapping(horizontal_mapping, vertical_mapping, init_network, solution_network)
 
-    for key, value in solution_network[0].items():
-        if type(value) is dict:
-            solution_horizontal.append(list(value.values()))
+    for key, value in horizontal_mapping.items():
+        horizontal_score += len(set(init_network[0][key].items()) & set(solution_network[0][value].items()))
 
-    for key, value in solution_network[1].items():
-        if type(value) is dict:
-            solution_vertical.append(list(value.values()))
+    for key, value in vertical_mapping.items():
+        vertical_score += len(set(init_network[1][key].items()) & set(solution_network[1][value].items()))
 
-    # horizontal_set = set(horizontal[0].items())
-    # vertical_set = set(vertical[0].items())
-    #
-    # for horizontal in horizontal[1:]:
-    #     horizontal_set = horizontal_set & set(horizontal.items())
-    #
-    # for vertical in vertical[1:]:
-    #     vertical_set = vertical_set & set(vertical.items())
+    return horizontal_score + vertical_score
 
-    # shared_items1 = set(init_network[0].items()) & set(
-    #     solution_network[0].items())
-    #
-    # shared_items2 = set(init_network[1].items()) & set(
-    #     solution_network[1].items())
-
-    shared1 = set(init_horizontal) & set(solution_horizontal)
-    shared2 = set(init_vertical) & set(solution_vertical)
-
-    return len(shared1) + len(shared2)
 
 def normalize_scores(scores, semantic_network):
 
-    # represents an exact match
-    # max_score = len(semantic_network[0]) * 2
-    #
-    # for i, score in enumerate(scores):
-    #     if score != max_score:
-    #         scores[i] = 0
+    max_score = max(scores)
+    for i, value in enumerate(scores):
+        if value != max_score:
+            scores[i] = 0
 
     t = float(sum(scores))
     out = [x / t for x in scores]
