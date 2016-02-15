@@ -89,7 +89,6 @@ def create_transformation_network(figure_i, figure_j, figure_mapping, orientatio
 
 def find_partner_object_by_attribute(object, figure, relational_size, attributeName):
 
-
     for objectName in figure.objects:
         thisObject = figure.objects[objectName]
 
@@ -115,14 +114,13 @@ def find_partner_object_by_attribute(object, figure, relational_size, attributeN
             obj['size'] = 1
             return obj
 
-
     obj = dict()
     obj['name'] = ''
     obj['type'] = 'removed'
     return obj
 
 
-def find_partner_object(object, figure, keywords):
+def find_partner_object(mapped_object, figure, keywords):
 
     for objectName in figure.objects:
         thisObject = figure.objects[objectName]
@@ -138,17 +136,18 @@ def find_partner_object(object, figure, keywords):
     obj['type'] = 'removed'
     return obj
 
-def create_figure_mapping(object, figure, keywords):
 
-    shared_keywords = set(object.attributes) & set(keywords)
+def create_figure_mapping(mapped_object, figure, keywords):
+
+    shared_keywords = set(mapped_object.attributes) & set(keywords)
 
     if len(shared_keywords) > 0:
         for attrib in shared_keywords:
-            relational_size = len(object.attributes[attrib].split(','))
-            return find_partner_object_by_attribute(object, figure, relational_size, attrib)
+            relational_size = len(mapped_object.attributes[attrib].split(','))
+            return find_partner_object_by_attribute(mapped_object, figure, relational_size, attrib)
 
     else:
-        return find_partner_object(object, figure, keywords)
+        return find_partner_object(mapped_object, figure, keywords)
 
 
 def create_semantic_network(figure_i, figure_j, orientation, title):
@@ -160,12 +159,13 @@ def create_semantic_network(figure_i, figure_j, orientation, title):
         thisObject = figure_i.objects[objectName]
         figure_mapping[objectName] = create_figure_mapping(thisObject, figure_j, keywords)
 
-    transformations = create_transformation_network(figure_i, figure_j, figure_mapping, orientation)
-    transformations['mapping'] = figure_mapping
-    return transformations
 
+    transformation = create_transformation_network(figure_i, figure_j, figure_mapping, orientation)
+    transformation['mapping'] = figure_mapping
+    return transformation
 
 def create_compare_figure_mapping(horizontal_mapping, vertical_mapping, init_network, solution_network):
+
     # compare horizontal transformation
     for key, value in init_network[0]['mapping'].items():
         for key2, value2 in solution_network[0]['mapping'].items():
@@ -188,7 +188,6 @@ def create_compare_figure_mapping(horizontal_mapping, vertical_mapping, init_net
 
 
 def agent_compare(init_network, solution_network):
-
 
     horizontal_mapping = dict()
     horizontal_score = 0
@@ -218,6 +217,7 @@ def normalize_scores(scores, semantic_network):
     out = [x / t for x in scores]
     return out
 
+
 class Agent:
     # The default constructor for your Agent. Make sure to execute any
     # processing necessary before your Agent starts solving problems here.
@@ -233,9 +233,9 @@ class Agent:
         print('solving problem ' + problem.name)
 
         if problem.problemType == '3x3':
-            return [.1, .1, .1, .1, .1, .1]
+            return [1, 1, 1, 1, 1, 1]
         if problem.hasVerbal is False:
-            return [.1, .1, .1, .1, .1, .1]
+            return [1, 1, 1, 1, 1, 1]
 
         a = problem.figures["A"]
         b = problem.figures["B"]
