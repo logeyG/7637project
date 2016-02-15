@@ -48,7 +48,7 @@ def calc_alignment(keyword1, keyword2, orientation):
 
 
 def get_first_item(figure):
-    return next (iter (figure.objects.values()))
+    return next(iter (figure.objects.values()))
 
 
 def transform_utility(transformation_dict, prop, obj1, obj2):
@@ -63,7 +63,8 @@ def transform_utility(transformation_dict, prop, obj1, obj2):
         else:
 
             if prop == 'angle':
-                transformation_dict[t_key][prop] = calc_distance_between_two_angles(obj1.attributes[prop], obj2.attributes[prop])
+                transformation_dict[t_key][prop] = calc_distance_between_two_angles(obj1.attributes[prop],
+                                                                                    obj2.attributes[prop])
             elif prop == 'alignment':
                 transformation_dict[t_key][prop] = calc_alignment(obj1.attributes[prop],
                                                          obj2.attributes[prop], transformation_dict['orientation'])
@@ -81,7 +82,7 @@ def create_transformation_network(figure_i, figure_j, figure_mapping, orientatio
     for key, value in figure_mapping.items():
         for prop in ['shape', 'size', 'fill', 'angle', 'alignment']:
 
-            if value['type'] != 'removed':
+            if value['type'] != 'removed' and value['type'] != 'added':
                 transform_utility(transformation, prop, figure_i.objects[key], figure_j.objects[value['name']])
 
     return transformation
@@ -159,6 +160,21 @@ def create_semantic_network(figure_i, figure_j, orientation, title):
         thisObject = figure_i.objects[objectName]
         figure_mapping[objectName] = create_figure_mapping(thisObject, figure_j, keywords)
 
+    # find additions
+    for objectName in figure_j.objects:
+        thisObject = figure_j.objects[objectName]
+
+        keys = []
+        values = []
+        for key, value in figure_mapping.items():
+            keys.append(key)
+            values.append(value['name'])
+
+        if thisObject.name not in keys and thisObject.name not in values:
+            obj = dict()
+            obj['type'] = 'added'
+            obj['name'] = ''
+            figure_mapping[thisObject.name] = obj
 
     transformation = create_transformation_network(figure_i, figure_j, figure_mapping, orientation)
     transformation['mapping'] = figure_mapping
@@ -206,7 +222,7 @@ def agent_compare(init_network, solution_network):
     return horizontal_score + vertical_score
 
 
-def normalize_scores(scores, semantic_network):
+def normalize_scores(scores):
 
     max_score = max(scores)
     for i, value in enumerate(scores):
@@ -214,9 +230,19 @@ def normalize_scores(scores, semantic_network):
             scores[i] = 0
 
     t = float(sum(scores))
+
+    # no answer could be found
+    if t == 0:
+        scores = [1, 1, 1, 1, 1, 1]
+        t = float(sum(scores))
+        out = [x / t for x in scores]
+        return out
+
     out = [x / t for x in scores]
     return out
 
+def prune_solution(init_network, solution_network):
+    return False
 
 class Agent:
     # The default constructor for your Agent. Make sure to execute any
@@ -231,11 +257,6 @@ class Agent:
     def Solve(self, problem):
 
         print('solving problem ' + problem.name)
-
-        if problem.problemType == '3x3':
-            return [1, 1, 1, 1, 1, 1]
-        if problem.hasVerbal is False:
-            return [1, 1, 1, 1, 1, 1]
 
         a = problem.figures["A"]
         b = problem.figures["B"]
@@ -257,18 +278,23 @@ class Agent:
         scores = []
 
         for solution in solutions:
+
             # compare init_network with generated solutions
             solution_network = [create_semantic_network(
                 c, solution, 'horizontal', solution.name), create_semantic_network(b, solution, 'vertical', solution.name)]
 
-            score = agent_compare(init_network, solution_network)
+            prune = prune_solution(init_network, solution_network)
+
+            if prune:
+                score = 0
+            else:
+                score = agent_compare(init_network, solution_network)
             scores.append(score)
 
-        scores = normalize_scores(scores, init_network)
+        scores = normalize_scores(scores)
 
         print(scores)
         print('given answer: ' + str(scores.index(max(scores)) + 1))
-        print('actual answer: ' + str(problem.checkAnswer(scores)))
-        print('\n')
-
+        # print('actual answer: ' + str(problem.checkAnswer(scores)))
+        print()
         return scores
