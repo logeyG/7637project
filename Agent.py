@@ -8,18 +8,67 @@
 #
 # These methods will be necessary for the project's main method to run.
 
+import math
+import operator
 # Install Pillow and uncomment this line to access image processing.
 from PIL import Image
+from PIL import ImageChops
+
+
+# solution adapted from this stackoverflow post
+# http://stackoverflow.com/questions/14263050/
+# segment-an-image-using-python-and-pil-to-calculate-centroid-and-rotations-of-mul
+def follow_border(im, x, y, used):
+    work = [(x, y)]
+    border = []
+    while work:
+        x, y = work.pop()
+        used.add((x, y))
+        border.append((x, y))
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1),
+                       (1, 1), (-1, -1), (1, -1), (-1, 1)):
+            px, py = x + dx, y + dy
+            if im[px, py] == 255 or (px, py) in used:
+                continue
+            work.append((px, py))
+
+    return border
+
+
+def rmsdiff(figure1, figure2):
+    # http://effbot.org/zone/pil-comparing-images.htm#rms
+    # calculate the root-mean-square difference between two images
+    h = ImageChops.difference(figure1, figure2).histogram()
+
+    # calculate rms
+    return math.sqrt(reduce(operator.add,
+                            map(lambda h, i: h * (i**2), h, range(256))
+                            ) / (float(figure1.size[0]) * figure1.size[1]))
+
+
+def shape_count(figure):
+
+    img = Image.open(figure.visualFilename)
+    pixels = img.load()
+
+    width, height = img.size
+
+    used = set()
+    border = []
+    for x in range(width):
+        for y in range(height):
+            thisPixel = pixels[x, y]
+            if thisPixel == 255 or (x, y) in used:
+                continue
+            b = follow_border(pixels, x, y, used)
+            border.append(b)
+
+    return len(border)
 
 
 def create_semantic_network(nodes):
     for node in nodes:
-        figure_image = Image.open(node.visualFilename)
-
-        figured_loaded = figure_image.load()
-        for i in range(0, figure_image.size[0]):
-            for j in range(0, figure_image.size[1]):
-                thisPixel = figure_loaded[i, j]
+        print(shape_count(node))
 
 
 def agent_compare(init_network, solution_network):
