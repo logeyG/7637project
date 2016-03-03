@@ -8,9 +8,12 @@
 #
 # These methods will be necessary for the project's main method to run.
 
+import math
+import operator
 # Install Pillow and uncomment this line to access image processing.
 from PIL import Image
 from PIL import ImageChops
+from functools import reduce
 
 
 class Region():
@@ -33,6 +36,46 @@ class Region():
 
     def box(self):
         return [(self._min_x, self._min_y), (self._max_x, self._max_y)]
+
+
+def setup(problem, figures, solutions):
+
+    print('solving problem ' + problem.name)
+    if problem.problemType == '3x3':
+        a = problem.figures["A"]
+        b = problem.figures["B"]
+        c = problem.figures["C"]
+        d = problem.figures["D"]
+        e = problem.figures["E"]
+        f = problem.figures["F"]
+        g = problem.figures["G"]
+        h = problem.figures["H"]
+
+        _1 = problem.figures["1"]
+        _2 = problem.figures["2"]
+        _3 = problem.figures["3"]
+        _4 = problem.figures["4"]
+        _5 = problem.figures["5"]
+        _6 = problem.figures["6"]
+        _7 = problem.figures["7"]
+        _8 = problem.figures["8"]
+
+        figures = [a, b, c, d, e, f, g, h]
+        solutions = [_1, _2, _3, _4, _5, _6, _7, _8]
+    else:
+        a = problem.figures["A"]
+        b = problem.figures["B"]
+        c = problem.figures["C"]
+
+        _1 = problem.figures["1"]
+        _2 = problem.figures["2"]
+        _3 = problem.figures["3"]
+        _4 = problem.figures["4"]
+        _5 = problem.figures["5"]
+        _6 = problem.figures["6"]
+
+        figures = [a, b, c]
+        solutions = [_1, _2, _3, _4, _5, _6]
 
 
 def find_regions(figure):
@@ -92,50 +135,86 @@ def find_regions(figure):
     return list(regions.items())
 
 
-def equality(figure1, figure2):
+def equality(source, compare):
+
+    if hasattr(source, 'visualFilename'):
+        source = Image.open(source.visualFilename)
+        compare = Image.open(compare.visualFilename)
+
     # http://effbot.org/zone/pil-comparing-images.htm#rms
     # calculate the root-mean-square difference between two images
-    h = ImageChops.difference(figure1, figure2).histogram()
+    h = ImageChops.difference(source, compare).histogram()
     # calculate rms
     equality = math.sqrt(reduce(operator.add,
                                 map(lambda h, i: h * (i**2), h, range(256))
-                                ) / (float(figure1.size[0]) * figure1.size[1]))
+                                ) / (float(source.size[0]) * source.size[1]))
     if equality < 0.1:
         return True
     else:
         return False
 
 
+def shape_delta(source, compare):
+    source_count = len(find_regions(source))
+    compare_count = len(find_regions(compare))
+
+    if source_count < compare_count:
+        return 'added_' + str(compare_count - source_count)
+    elif source_count > compare_count:
+        return 'removed_' + str(source_count - compare_count)
+    else:
+        return 'unchanged'
+
+
 def h_flip(figure1, figure2):
-    source = Image.open(figure1)
+    source = Image.open(figure1.visualFilename)
     flipped = Image.open(figure2.visualFilename).transpose(Image.FLIP_LEFT_RIGHT)
-    return calc_equality(source, flipped)
+    return equality(source, flipped)
 
 
 def v_flip(figure1, figure2):
-    source = Image.open(figure1)
+    source = Image.open(figure1.visualFilename)
     flipped = Image.open(figure2.visualFilename).transpose(Image.FLIP_TOP_BOTTOM)
-    return calc_equality(source, flipped)
+    return equality(source, flipped)
 
 
 def rotation(figure1, figure2):
-    source = Image.open(figure1)
+    source = Image.open(figure1.visualFilename)
     rotate90 = Image.open(figure2.visualFilename).transpose(Image.ROTATE_90)
     rotate180 = Image.open(figure2.visualFilename).transpose(Image.ROTATE_180)
     rotate270 = Image.open(figure2.visualFilename).transpose(Image.ROTATE_270)
 
-    if calc_equality(source, rotate90):
-        return (True, '90')
-    elif calc_equality(source, rotate180):
-        return (True, '180')
-    elif calc_equality(source, rotate270):
-        return (True, '270')
+    if equality(source, rotate90):
+        return 'rotated_90'
+    elif equality(source, rotate180):
+        return 'rotated_180'
+    elif equality(source, rotate270):
+        return 'rotated_270'
     else:
-        return False
+        return None
 
 
-def create_semantic_network(nodes):
+def get_transformation(figure1, figure2):
 
+    transformations = {}
+    rotated = rotation(figure1, figure2)
+
+    transformations['equality'] = equality(figure1, figure2)
+    transformations['h_flip'] = h_flip(figure1, figure2)
+    transformations['v_flip'] = v_flip(figure1, figure2)
+    transformations['rotation'] = rotation(figure1, figure2)
+    transformations['shape_delta'] = shape_delta(figure1, figure2)
+
+    return transformations
+
+
+def create_2x2_network(figures):
+    pass
+
+
+def create_3x3_network(figures):
+
+    networks = []
     # need to analyze
     # horizontal
     # a -> b, b -> c
@@ -159,11 +238,52 @@ def create_semantic_network(nodes):
     # a -> e, e -> solution
     # 0 -> 4, 4 -> 8
 
-    for node in nodes:
-        print node.name
+    # horizontal
+    for i in range(len(figures) - 1):
+
+        if i == 2 or i == 5:
+            continue
+
+        semantic_network = {}
+        name = figures[i].name + '->' + figures[i + 1].name
+        semantic_network[name] = get_transformation(figures[i], figures[i + 1])
+        # print(semantic_network)
+        networks.append(semantic_network)
+
+    # vertical
+    for i in range(len(figures) - 3):
+
+        semantic_network = {}
+        name = figures[i].name + '->' + figures[i + 3].name
+        semantic_network[name] = get_transformation(figures[i], figures[i + 3])
+        # print(semantic_network)
+        networks.append(semantic_network)
+
+    # diagonal
+    diag_network1 = {}
+    diag_network2 = {}
+
+    name = figures[0].name + '->' + figures[4].name
+    diag_network1[name] = get_transformation(figures[0], figures[4])
+    networks.append(diag_network1)
+
+    if len(figures) == 9:
+        name = figures[4].name + '->' + figures[8].name
+        diag_network2[name] = get_transformation(figures[4], figures[8])
+        networks.append(diag_network2)
+
+    return networks
 
 
-def agent_compare(init_network, solution_network):
+def create_semantic_network(figures, type):
+
+    if type == '3x3':
+        return create_3x3_network(figures)
+    else:
+        return create_2x2_network(figures)
+
+
+def agent_compare(init_network, solution_network, problemType):
     pass
 
 
@@ -186,38 +306,23 @@ class Agent:
 
     def Solve(self, problem):
 
-        print('solving problem ' + problem.name)
+        figures = None
+        solutions = None
 
-        a = problem.figures["A"]
-        b = problem.figures["B"]
-        c = problem.figures["C"]
-        d = problem.figures["D"]
-        e = problem.figures["E"]
-        f = problem.figures["F"]
-        g = problem.figures["G"]
-        h = problem.figures["H"]
-
-        _1 = problem.figures["1"]
-        _2 = problem.figures["2"]
-        _3 = problem.figures["3"]
-        _4 = problem.figures["4"]
-        _5 = problem.figures["5"]
-        _6 = problem.figures["6"]
-        _7 = problem.figures["7"]
-        _8 = problem.figures["8"]
+        setup(problem, figures, solutions)
 
         # generate our initial semantic network to test against
-        init_network = create_semantic_network([a, b, c, d, e, f, g, h])
-        # all possible solutions
-        solutions = [_1, _2, _3, _4, _5, _6, _7, _8]
+        init_network = create_semantic_network(figures, problem.problemType)
+
         scores = []
 
         for solution in solutions:
 
             # compare init_network with generated solutions
-            solution_network = create_semantic_network([a, b, c, d, e, f, g, h, solution])
+            solution_network = create_semantic_network(
+                [a, b, c, d, e, f, g, h, solution], problem.problemType)
 
-            score = agent_compare(init_network, solution_network)
+            score = agent_compare(init_network, solution_network, problem.problemType)
             scores.append(score)
 
         scores = normalize_scores(scores)
