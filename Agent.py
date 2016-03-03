@@ -8,67 +8,159 @@
 #
 # These methods will be necessary for the project's main method to run.
 
-import math
-import operator
 # Install Pillow and uncomment this line to access image processing.
 from PIL import Image
 from PIL import ImageChops
 
 
-# solution adapted from this stackoverflow post
-# http://stackoverflow.com/questions/14263050/
-# segment-an-image-using-python-and-pil-to-calculate-centroid-and-rotations-of-mul
-def follow_border(im, x, y, used):
-    work = [(x, y)]
-    border = []
-    while work:
-        x, y = work.pop()
-        used.add((x, y))
-        border.append((x, y))
-        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1),
-                       (1, 1), (-1, -1), (1, -1), (-1, 1)):
-            px, py = x + dx, y + dy
-            if im[px, py] == 255 or (px, py) in used:
-                continue
-            work.append((px, py))
+class Region():
+    # solution modified from this stackoverflow answer:
+    # http://stackoverflow.com/questions/1989987/my-own-ocr-program-in-python
 
-    return border
+    def __init__(self, x, y):
+        self._pixels = [(x, y)]
+        self._min_x = x
+        self._max_x = x
+        self._min_y = y
+        self._max_y = y
 
+    def add(self, x, y):
+        self._pixels.append((x, y))
+        self._min_x = min(self._min_x, x)
+        self._max_x = max(self._max_x, x)
+        self._min_y = min(self._min_y, y)
+        self._max_y = max(self._max_y, y)
 
-def rmsdiff(figure1, figure2):
-    # http://effbot.org/zone/pil-comparing-images.htm#rms
-    # calculate the root-mean-square difference between two images
-    h = ImageChops.difference(figure1, figure2).histogram()
-
-    # calculate rms
-    return math.sqrt(reduce(operator.add,
-                            map(lambda h, i: h * (i**2), h, range(256))
-                            ) / (float(figure1.size[0]) * figure1.size[1]))
+    def box(self):
+        return [(self._min_x, self._min_y), (self._max_x, self._max_y)]
 
 
-def shape_count(figure):
-
+def find_regions(figure):
+    # solution modified from this stackoverflow answer:
+    # http://stackoverflow.com/questions/1989987/my-own-ocr-program-in-python
     img = Image.open(figure.visualFilename)
     pixels = img.load()
 
     width, height = img.size
+    pixels = img.load()
+    regions = {}
+    pixel_region = [[0 for y in range(height)] for x in range(width)]
+    equivalences = {}
+    n_regions = 0
 
-    used = set()
-    border = []
+    # first pass. find regions.
     for x in range(width):
         for y in range(height):
-            thisPixel = pixels[x, y]
-            if thisPixel == 255 or (x, y) in used:
-                continue
-            b = follow_border(pixels, x, y, used)
-            border.append(b)
+            # look for a black pixel
+            if pixels[x, y] == (0, 0, 0, 255):  # black pixel
+                # get the region number from north or west
+                # or create new region
+                region_n = pixel_region[x - 1][y] if x > 0 else 0
+                region_w = pixel_region[x][y - 1] if y > 0 else 0
 
-    return len(border)
+                max_region = max(region_n, region_w)
+
+                if max_region > 0:
+                    # a neighbour already has a region
+                    # new region is the smallest > 0
+                    new_region = min(filter(lambda i: i > 0, (region_n, region_w)))
+                    # update equivalences
+                    if max_region > new_region:
+                        if max_region in equivalences:
+                            equivalences[max_region].add(new_region)
+                        else:
+                            equivalences[max_region] = set((new_region, ))
+                else:
+                    n_regions += 1
+                    new_region = n_regions
+
+                pixel_region[x][y] = new_region
+
+    # scan image again, assigning all equivalent regions the same region value
+    for x in range(width):
+        for y in range(height):
+            r = pixel_region[x][y]
+            if r > 0:
+                while r in equivalences:
+                    r = min(equivalences[r])
+
+                if not r in regions:
+                    regions[r] = Region(x, y)
+                else:
+                    regions[r].add(x, y)
+
+    return list(regions.items())
+
+
+def equality(figure1, figure2):
+    # http://effbot.org/zone/pil-comparing-images.htm#rms
+    # calculate the root-mean-square difference between two images
+    h = ImageChops.difference(figure1, figure2).histogram()
+    # calculate rms
+    equality = math.sqrt(reduce(operator.add,
+                                map(lambda h, i: h * (i**2), h, range(256))
+                                ) / (float(figure1.size[0]) * figure1.size[1]))
+    if equality < 0.1:
+        return True
+    else:
+        return False
+
+
+def h_flip(figure1, figure2):
+    source = Image.open(figure1)
+    flipped = Image.open(figure2.visualFilename).transpose(Image.FLIP_LEFT_RIGHT)
+    return calc_equality(source, flipped)
+
+
+def v_flip(figure1, figure2):
+    source = Image.open(figure1)
+    flipped = Image.open(figure2.visualFilename).transpose(Image.FLIP_TOP_BOTTOM)
+    return calc_equality(source, flipped)
+
+
+def rotation(figure1, figure2):
+    source = Image.open(figure1)
+    rotate90 = Image.open(figure2.visualFilename).transpose(Image.ROTATE_90)
+    rotate180 = Image.open(figure2.visualFilename).transpose(Image.ROTATE_180)
+    rotate270 = Image.open(figure2.visualFilename).transpose(Image.ROTATE_270)
+
+    if calc_equality(source, rotate90):
+        return (True, '90')
+    elif calc_equality(source, rotate180):
+        return (True, '180')
+    elif calc_equality(source, rotate270):
+        return (True, '270')
+    else:
+        return False
 
 
 def create_semantic_network(nodes):
+
+    # need to analyze
+    # horizontal
+    # a -> b, b -> c
+    # d -> e, e -> f
+    # g -> h, h -> solution
+
+    # 0 -> 1, 1 -> 2
+    # 3 -> 4, 4 -> 5
+    # 6 -> 7, 7 -> 8
+
+    # vertical
+    # a -> d, d -> g
+    # b -> e, e -> h
+    # c -> f, f -> solution
+
+    # 0 -> 3, 3 -> 6
+    # 1 -> 4, 4 -> 7
+    # 2 -> 5, 5 -> 8
+
+    # diagonal
+    # a -> e, e -> solution
+    # 0 -> 4, 4 -> 8
+
     for node in nodes:
-        print(shape_count(node))
+        print node.name
 
 
 def agent_compare(init_network, solution_network):
