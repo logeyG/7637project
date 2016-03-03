@@ -209,34 +209,54 @@ def get_transformation(figure1, figure2):
 
 
 def create_2x2_network(figures):
-    pass
+    networks = {}
+    networks['horizontal'] = []
+    networks['vertical'] = []
+
+    # 0  1
+    # 2  3
+
+    # a  b
+    # c  solution
+
+    # horizontal
+    for i in range(len(figures) - 1):
+
+        if i == 1:
+            continue
+
+        semantic_network = {}
+        name = figures[i].name + '->' + figures[i + 1].name
+        semantic_network[name] = get_transformation(figures[i], figures[i + 1])
+        # print(semantic_network)
+        networks['horizontal'].append(semantic_network)
+
+    # vertical
+    for i in range(len(figures) - 2):
+
+        semantic_network = {}
+        name = figures[i].name + '->' + figures[i + 2].name
+        semantic_network[name] = get_transformation(figures[i], figures[i + 2])
+        # print(semantic_network)
+        networks['vertical'].append(semantic_network)
+
+    return networks
 
 
 def create_3x3_network(figures):
 
-    networks = []
-    # need to analyze
-    # horizontal
-    # a -> b, b -> c
-    # d -> e, e -> f
-    # g -> h, h -> solution
+    networks = {}
+    networks['horizontal'] = []
+    networks['vertical'] = []
+    networks['diagonal'] = []
 
-    # 0 -> 1, 1 -> 2
-    # 3 -> 4, 4 -> 5
-    # 6 -> 7, 7 -> 8
+    # 0  1  3
+    # 4  5  6
+    # 7  8  9
 
-    # vertical
-    # a -> d, d -> g
-    # b -> e, e -> h
-    # c -> f, f -> solution
-
-    # 0 -> 3, 3 -> 6
-    # 1 -> 4, 4 -> 7
-    # 2 -> 5, 5 -> 8
-
-    # diagonal
-    # a -> e, e -> solution
-    # 0 -> 4, 4 -> 8
+    # a  b  c
+    # d  e  f
+    # g  h  solution
 
     # horizontal
     for i in range(len(figures) - 1):
@@ -248,7 +268,7 @@ def create_3x3_network(figures):
         name = figures[i].name + '->' + figures[i + 1].name
         semantic_network[name] = get_transformation(figures[i], figures[i + 1])
         # print(semantic_network)
-        networks.append(semantic_network)
+        networks['horizontal'].append(semantic_network)
 
     # vertical
     for i in range(len(figures) - 3):
@@ -257,20 +277,16 @@ def create_3x3_network(figures):
         name = figures[i].name + '->' + figures[i + 3].name
         semantic_network[name] = get_transformation(figures[i], figures[i + 3])
         # print(semantic_network)
-        networks.append(semantic_network)
+        networks['vertical'].append(semantic_network)
 
     # diagonal
-    diag_network1 = {}
-    diag_network2 = {}
-
-    name = figures[0].name + '->' + figures[4].name
-    diag_network1[name] = get_transformation(figures[0], figures[4])
-    networks.append(diag_network1)
-
-    if len(figures) == 9:
-        name = figures[4].name + '->' + figures[8].name
-        diag_network2[name] = get_transformation(figures[4], figures[8])
-        networks.append(diag_network2)
+    for i in range(len(figures) - 4):
+        if i == 0 or i == 5:
+            semantic_network = {}
+            name = figures[i].name + '->' + figures[i + 4].name
+            semantic_network[name] = get_transformation(figures[i], figures[i + 4])
+            # print(semantic_network)
+            networks['diagonal'].append(semantic_network)
 
     return networks
 
@@ -318,9 +334,10 @@ class Agent:
 
         for solution in solutions:
 
+            compare_figures = figures
+            compare_figures.append(solution)
             # compare init_network with generated solutions
-            solution_network = create_semantic_network(
-                [a, b, c, d, e, f, g, h, solution], problem.problemType)
+            solution_network = create_semantic_network(compare_figures, problem.problemType)
 
             score = agent_compare(init_network, solution_network, problem.problemType)
             scores.append(score)
