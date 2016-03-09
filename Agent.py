@@ -38,8 +38,10 @@ class Region():
         return [(self._min_x, self._min_y), (self._max_x, self._max_y)]
 
 
-def setup(problem, figures, solutions):
+def setup(problem):
 
+    figures = None
+    solutions = None
     print('solving problem ' + problem.name)
     if problem.problemType == '3x3':
         a = problem.figures["A"]
@@ -62,6 +64,7 @@ def setup(problem, figures, solutions):
 
         figures = [a, b, c, d, e, f, g, h]
         solutions = [_1, _2, _3, _4, _5, _6, _7, _8]
+
     else:
         a = problem.figures["A"]
         b = problem.figures["B"]
@@ -76,6 +79,21 @@ def setup(problem, figures, solutions):
 
         figures = [a, b, c]
         solutions = [_1, _2, _3, _4, _5, _6]
+
+    return figures, solutions
+
+
+def dict_compare(d1, d2):
+    # solution from
+    # http://stackoverflow.com/questions/4527942/comparing-two-dictionaries-in-python
+    d1_keys = set(d1.keys())
+    d2_keys = set(d2.keys())
+    intersect_keys = d1_keys.intersection(d2_keys)
+    added = d1_keys - d2_keys
+    removed = d2_keys - d1_keys
+    modified = {o: (d1[o], d2[o]) for o in intersect_keys if d1[o] != d2[o]}
+    same = set(o for o in intersect_keys if d1[o] == d2[o])
+    return added, removed, modified, same
 
 
 def find_regions(figure):
@@ -148,10 +166,28 @@ def equality(source, compare):
     equality = math.sqrt(reduce(operator.add,
                                 map(lambda h, i: h * (i**2), h, range(256))
                                 ) / (float(source.size[0]) * source.size[1]))
-    if equality < 0.1:
+    if equality < 1:
         return True
     else:
         return False
+
+
+def similarity(source, compare):
+
+    if hasattr(source, 'visualFilename'):
+        source = Image.open(source.visualFilename)
+        compare = Image.open(compare.visualFilename)
+
+    # http://effbot.org/zone/pil-comparing-images.htm#rms
+    # calculate the root-mean-square difference between two images
+    h = ImageChops.difference(source, compare).histogram()
+    # calculate rms
+    equality = math.sqrt(reduce(operator.add,
+                                map(lambda h, i: h * (i**2), h, range(256))
+                                ) / (float(source.size[0]) * source.size[1]))
+
+    x = round(equality, 0)
+    return x
 
 
 def shape_delta(source, compare):
@@ -204,51 +240,33 @@ def get_transformation(figure1, figure2):
     transformations['v_flip'] = v_flip(figure1, figure2)
     transformations['rotation'] = rotation(figure1, figure2)
     transformations['shape_delta'] = shape_delta(figure1, figure2)
+    transformations['similarity'] = similarity(figure1, figure2)
 
     return transformations
 
 
 def create_2x2_network(figures):
-    networks = {}
-    networks['horizontal'] = []
-    networks['vertical'] = []
-
+    pass
     # 0  1
     # 2  3
 
     # a  b
     # c  solution
 
-    # horizontal
-    for i in range(len(figures) - 1):
 
-        if i == 1:
-            continue
+def create_relationship_diagram(figures):
 
-        semantic_network = {}
-        name = figures[i].name + '->' + figures[i + 1].name
-        semantic_network[name] = get_transformation(figures[i], figures[i + 1])
-        # print(semantic_network)
-        networks['horizontal'].append(semantic_network)
+    relationship_diagrams = []
+    if len(figures) == 2:
+        pass
+    else:
+        for i in range(len(figures) - 1):
+            relationship_diagrams.append(get_transformation(figures[i], figures[i + 1]))
 
-    # vertical
-    for i in range(len(figures) - 2):
-
-        semantic_network = {}
-        name = figures[i].name + '->' + figures[i + 2].name
-        semantic_network[name] = get_transformation(figures[i], figures[i + 2])
-        # print(semantic_network)
-        networks['vertical'].append(semantic_network)
-
-    return networks
+    return relationship_diagrams
 
 
 def create_3x3_network(figures):
-
-    networks = {}
-    networks['horizontal'] = []
-    networks['vertical'] = []
-    networks['diagonal'] = []
 
     # 0  1  3
     # 4  5  6
@@ -258,49 +276,53 @@ def create_3x3_network(figures):
     # d  e  f
     # g  h  solution
 
-    # horizontal
-    for i in range(len(figures) - 1):
+    H1 = create_relationship_diagram([figures[0], figures[1], figures[2]])
+    H2 = create_relationship_diagram([figures[3], figures[4], figures[5]])
+    V1 = create_relationship_diagram([figures[0], figures[3], figures[6]])
+    V2 = create_relationship_diagram([figures[1], figures[4], figures[7]])
+    R = (H1, H2, V1, V2)
 
-        if i == 2 or i == 5:
-            continue
-
-        semantic_network = {}
-        name = figures[i].name + '->' + figures[i + 1].name
-        semantic_network[name] = get_transformation(figures[i], figures[i + 1])
-        # print(semantic_network)
-        networks['horizontal'].append(semantic_network)
-
-    # vertical
-    for i in range(len(figures) - 3):
-
-        semantic_network = {}
-        name = figures[i].name + '->' + figures[i + 3].name
-        semantic_network[name] = get_transformation(figures[i], figures[i + 3])
-        # print(semantic_network)
-        networks['vertical'].append(semantic_network)
-
-    # diagonal
-    for i in range(len(figures) - 4):
-        if i == 0 or i == 5:
-            semantic_network = {}
-            name = figures[i].name + '->' + figures[i + 4].name
-            semantic_network[name] = get_transformation(figures[i], figures[i + 4])
-            # print(semantic_network)
-            networks['diagonal'].append(semantic_network)
-
-    return networks
+    return R
 
 
-def create_semantic_network(figures, type):
+def create_semantic_network(figures, problemType):
 
-    if type == '3x3':
+    if problemType == '3x3':
         return create_3x3_network(figures)
     else:
         return create_2x2_network(figures)
 
 
-def agent_compare(init_network, solution_network, problemType):
-    pass
+def get_similarity_metric(a, b):
+
+    added_h, removed_h, modified_h, same_h = dict_compare(a[0], b[0])
+    added_v, removed_v, modified_v, same_v = dict_compare(a[1], b[1])
+
+    return len(same_h) + len(same_v)
+
+
+def agent_compare(init_network, H, V, problemType):
+
+    if problemType == '3x3':
+
+        H1 = init_network[0]
+        H2 = init_network[1]
+
+        V1 = init_network[2]
+        V2 = init_network[3]
+
+        metrics = [get_similarity_metric(H1, H),
+                   get_similarity_metric(H2, H),
+                   get_similarity_metric(V1, V),
+                   get_similarity_metric(V2, V)]
+
+        result = float(sum(metrics))
+        return result
+
+    else:
+
+        result = [1, 2, 3, 4, 5, 6]
+        return result
 
 
 def normalize_scores(scores):
@@ -322,10 +344,7 @@ class Agent:
 
     def Solve(self, problem):
 
-        figures = None
-        solutions = None
-
-        setup(problem, figures, solutions)
+        figures, solutions = setup(problem)
 
         # generate our initial semantic network to test against
         init_network = create_semantic_network(figures, problem.problemType)
@@ -334,12 +353,11 @@ class Agent:
 
         for solution in solutions:
 
-            compare_figures = figures
-            compare_figures.append(solution)
             # compare init_network with generated solutions
-            solution_network = create_semantic_network(compare_figures, problem.problemType)
+            H = create_relationship_diagram([figures[6], figures[7], solution])
+            V = create_relationship_diagram([figures[2], figures[5], solution])
 
-            score = agent_compare(init_network, solution_network, problem.problemType)
+            score = agent_compare(init_network, H, V, problem.problemType)
             scores.append(score)
 
         scores = normalize_scores(scores)

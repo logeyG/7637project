@@ -1,2 +1,7 @@
 Problem,Correct Confidence
-Basic Problem C-01,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
+Basic Problem C-01,0.13793103448275862
+Basic Problem C-02,0.132890365448505
+Basic Problem C-03,0.12355212355212356
+Basic Problem C-04,0.12461059190031153
+Basic Problem C-05,0.125
+Basic Problem C-06,0.1282051282051282
