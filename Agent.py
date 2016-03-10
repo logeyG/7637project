@@ -95,6 +95,19 @@ def dict_compare(d1, d2):
     same = set(o for o in intersect_keys if d1[o] == d2[o])
     return added, removed, modified, same
 
+def find_first_edge(figure):
+
+    img = Image.open(figure.visualFilename)
+    pixels = img.load()
+
+    width, height = img.size
+    pixels = img.load()
+    # first pass. find regions.
+    for x in range(width):
+        for y in range(height):
+            # look for a black pixel
+            if pixels[x, y] == (0, 0, 0, 255):  # black pixel
+                return (x, y)
 
 def find_regions(figure):
     # solution modified from this stackoverflow answer:
@@ -153,25 +166,6 @@ def find_regions(figure):
     return list(regions.items())
 
 
-def equality(source, compare):
-
-    if hasattr(source, 'visualFilename'):
-        source = Image.open(source.visualFilename)
-        compare = Image.open(compare.visualFilename)
-
-    # http://effbot.org/zone/pil-comparing-images.htm#rms
-    # calculate the root-mean-square difference between two images
-    h = ImageChops.difference(source, compare).histogram()
-    # calculate rms
-    equality = math.sqrt(reduce(operator.add,
-                                map(lambda h, i: h * (i**2), h, range(256))
-                                ) / (float(source.size[0]) * source.size[1]))
-    if equality < 1:
-        return True
-    else:
-        return False
-
-
 def similarity(source, compare):
 
     if hasattr(source, 'visualFilename'):
@@ -186,8 +180,39 @@ def similarity(source, compare):
                                 map(lambda h, i: h * (i**2), h, range(256))
                                 ) / (float(source.size[0]) * source.size[1]))
 
-    x = round(equality, 0)
-    return x
+    return round(equality, 0)
+
+def equality(source, compare):
+
+    if hasattr(source, 'visualFilename'):
+        source = Image.open(source.visualFilename)
+        compare = Image.open(compare.visualFilename)
+
+    # http://effbot.org/zone/pil-comparing-images.htm#rms
+    # calculate the root-mean-square difference between two images
+    h = ImageChops.difference(source, compare).histogram()
+    # calculate rms
+    equality = math.sqrt(reduce(operator.add,
+                                map(lambda h, i: h * (i**2), h, range(256))
+                                ) / (float(source.size[0]) * source.size[1]))
+    if round(equality, 0) < 40.0:
+        return True
+    else:
+        return False
+
+def edge_comparison(source, compare):
+
+    source_distance = round(math.sqrt( math.pow(find_first_edge(source)[0], 2)
+                                       + math.pow(find_first_edge(source)[1], 2 )), 0)
+    compare_distance = round(math.sqrt( math.pow(find_first_edge(compare)[0], 2)
+                                        + math.pow(find_first_edge(compare)[1], 2 )), 0)
+
+    if source_distance > compare_distance and (source_distance - compare_distance > 5):
+        return 'expanded'
+    elif source_distance < compare_distance and (compare_distance - source_distance > 5):
+        return 'contracted'
+    else:
+        return 'unchanged'
 
 
 def shape_delta(source, compare):
@@ -195,12 +220,11 @@ def shape_delta(source, compare):
     compare_count = len(find_regions(compare))
 
     if source_count < compare_count:
-        return 'added_' + str(compare_count - source_count)
+        return 'added' #+ str(compare_count - source_count)
     elif source_count > compare_count:
-        return 'removed_' + str(source_count - compare_count)
+        return 'removed' #+ str(source_count - compare_count)
     else:
         return 'unchanged'
-
 
 def h_flip(figure1, figure2):
     source = Image.open(figure1.visualFilename)
@@ -233,14 +257,21 @@ def rotation(figure1, figure2):
 def get_transformation(figure1, figure2):
 
     transformations = {}
-    rotated = rotation(figure1, figure2)
+
+    if h_flip(figure1, figure2):
+        transformations['h_flip'] = True
+
+    if v_flip(figure1, figure2):
+        transformations['v_flip'] = True
+
+    if rotation(figure1, figure2) != None:
+        transformations['rotation'] = rotation(figure1, figure2)
+
+    if edge_comparison(figure1, figure2) != 'unchanged':
+        transformations['edge_comparison'] = edge_comparison(figure1, figure2)
 
     transformations['equality'] = equality(figure1, figure2)
-    transformations['h_flip'] = h_flip(figure1, figure2)
-    transformations['v_flip'] = v_flip(figure1, figure2)
-    transformations['rotation'] = rotation(figure1, figure2)
     transformations['shape_delta'] = shape_delta(figure1, figure2)
-    transformations['similarity'] = similarity(figure1, figure2)
 
     return transformations
 
@@ -285,9 +316,9 @@ def create_3x3_network(figures):
     return R
 
 
-def create_semantic_network(figures, problemType):
+def create_semantic_network(figures, problem):
 
-    if problemType == '3x3':
+    if problem.problemType == '3x3':
         return create_3x3_network(figures)
     else:
         return create_2x2_network(figures)
@@ -298,12 +329,21 @@ def get_similarity_metric(a, b):
     added_h, removed_h, modified_h, same_h = dict_compare(a[0], b[0])
     added_v, removed_v, modified_v, same_v = dict_compare(a[1], b[1])
 
-    return len(same_h) + len(same_v)
+    return weighted_score(same_h) + weighted_score(same_v)
+
+def weighted_score(s):
+
+    score = 0
+
+    for label in s:
+        score +=1
+
+    return score
 
 
-def agent_compare(init_network, H, V, problemType):
+def agent_compare(init_network, H, V, problem, solution_num):
 
-    if problemType == '3x3':
+    if problem.problemType == '3x3':
 
         H1 = init_network[0]
         H2 = init_network[1]
@@ -328,8 +368,36 @@ def agent_compare(init_network, H, V, problemType):
 def normalize_scores(scores):
 
     t = float(sum(scores))
-    out = [x / t for x in scores]
+
+    if t == 0:
+        out = [.125, .125, .125, .125, .125, .125, .125, .125]
+    else:
+
+        m_score = max(scores)
+        for i, score in enumerate(scores):
+            if score != m_score:
+                scores[i] = 0
+
+        t = float(sum(scores))
+        out = [x / t for x in scores]
+
     return out
+
+def pick_one(scores, figures, solutions):
+
+    comparisons = []
+    for i, score in enumerate(scores):
+
+        if score != 0.0:
+            x = (i, similarity(figures[7], solutions[i]))
+            comparisons.append(x)
+
+    m = min(comparisons, key = lambda t: t[1])
+
+    scores = [0, 0, 0, 0, 0, 0, 0, 0]
+    scores[m[0]] = 1
+
+    return scores
 
 
 class Agent:
@@ -347,20 +415,24 @@ class Agent:
         figures, solutions = setup(problem)
 
         # generate our initial semantic network to test against
-        init_network = create_semantic_network(figures, problem.problemType)
+        init_network = create_semantic_network(figures, problem)
 
         scores = []
 
-        for solution in solutions:
+        for i, solution in enumerate(solutions):
 
             # compare init_network with generated solutions
             H = create_relationship_diagram([figures[6], figures[7], solution])
             V = create_relationship_diagram([figures[2], figures[5], solution])
 
-            score = agent_compare(init_network, H, V, problem.problemType)
+            score = agent_compare(init_network, H, V, problem, i + 1)
             scores.append(score)
 
         scores = normalize_scores(scores)
+        print(scores)
+
+        if 1.0 not in scores:
+            scores = pick_one(scores, figures, solutions)
 
         print(scores)
         print('given answer: ' + str(scores.index(max(scores)) + 1))
