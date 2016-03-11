@@ -1,13 +1,13 @@
 Problem,Correct Confidence
-Basic Problem C-01,1.0
-Basic Problem C-02,1.0
-Basic Problem C-03,1
-Basic Problem C-04,1.0
-Basic Problem C-05,0
-Basic Problem C-06,1.0
-Basic Problem C-07,0.0
-Basic Problem C-08,[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125],Error,
-Basic Problem C-09,1
-Basic Problem C-10,1.0
-Basic Problem C-11,1.0
-Basic Problem C-12,0
+Basic Problem B-01,1.0
+Basic Problem B-02,1.0
+Basic Problem B-03,1.0
+Basic Problem B-04,0
+Basic Problem B-05,1.0
+Basic Problem B-06,0
+Basic Problem B-07,1.0
+Basic Problem B-08,1.0
+Basic Problem B-09,1.0
+Basic Problem B-10,0
+Basic Problem B-11,1.0
+Basic Problem B-12,1.0

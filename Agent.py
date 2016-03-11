@@ -165,37 +165,27 @@ def find_regions(figure):
 
     return list(regions.items())
 
+def calc_rms(source, compare):
+
+    if hasattr(source, 'visualFilename'):
+        source = Image.open(source.visualFilename)
+        compare = Image.open(compare.visualFilename)
+
+    # http://effbot.org/zone/pil-comparing-images.htm#rms
+    # calculate the root-mean-square difference between two images
+    h = ImageChops.difference(source, compare).histogram()
+    # calculate rms
+    rms = math.sqrt(reduce(operator.add,
+                                map(lambda h, i: h * (i**2), h, range(256))
+                                ) / (float(source.size[0]) * source.size[1]))
+
+    return rms
 
 def similarity(source, compare):
-
-    if hasattr(source, 'visualFilename'):
-        source = Image.open(source.visualFilename)
-        compare = Image.open(compare.visualFilename)
-
-    # http://effbot.org/zone/pil-comparing-images.htm#rms
-    # calculate the root-mean-square difference between two images
-    h = ImageChops.difference(source, compare).histogram()
-    # calculate rms
-    equality = math.sqrt(reduce(operator.add,
-                                map(lambda h, i: h * (i**2), h, range(256))
-                                ) / (float(source.size[0]) * source.size[1]))
-
-    return round(equality, 0)
+    return round(calc_rms(source, compare), 0)
 
 def equality(source, compare):
-
-    if hasattr(source, 'visualFilename'):
-        source = Image.open(source.visualFilename)
-        compare = Image.open(compare.visualFilename)
-
-    # http://effbot.org/zone/pil-comparing-images.htm#rms
-    # calculate the root-mean-square difference between two images
-    h = ImageChops.difference(source, compare).histogram()
-    # calculate rms
-    equality = math.sqrt(reduce(operator.add,
-                                map(lambda h, i: h * (i**2), h, range(256))
-                                ) / (float(source.size[0]) * source.size[1]))
-    if round(equality, 0) < 40.0:
+    if round(calc_rms(source, compare), 0) < 40.0:
         return True
     else:
         return False
@@ -275,71 +265,46 @@ def get_transformation(figure1, figure2):
 
     return transformations
 
-
-def create_2x2_network(figures):
-    pass
-    # 0  1
-    # 2  3
-
-    # a  b
-    # c  solution
-
-
 def create_relationship_diagram(figures):
 
     relationship_diagrams = []
-    if len(figures) == 2:
-        pass
-    else:
-        for i in range(len(figures) - 1):
-            relationship_diagrams.append(get_transformation(figures[i], figures[i + 1]))
+    for i in range(len(figures) - 1):
+        relationship_diagrams.append(get_transformation(figures[i], figures[i + 1]))
 
     return relationship_diagrams
-
-
-def create_3x3_network(figures):
-
-    # 0  1  3
-    # 4  5  6
-    # 7  8  9
-
-    # a  b  c
-    # d  e  f
-    # g  h  solution
-
-    H1 = create_relationship_diagram([figures[0], figures[1], figures[2]])
-    H2 = create_relationship_diagram([figures[3], figures[4], figures[5]])
-    V1 = create_relationship_diagram([figures[0], figures[3], figures[6]])
-    V2 = create_relationship_diagram([figures[1], figures[4], figures[7]])
-    R = (H1, H2, V1, V2)
-
-    return R
 
 
 def create_semantic_network(figures, problem):
 
     if problem.problemType == '3x3':
-        return create_3x3_network(figures)
+        H1 = create_relationship_diagram([figures[0], figures[1], figures[2]])
+        H2 = create_relationship_diagram([figures[3], figures[4], figures[5]])
+        V1 = create_relationship_diagram([figures[0], figures[3], figures[6]])
+        V2 = create_relationship_diagram([figures[1], figures[4], figures[7]])
+        R = (H1, H2, V1, V2)
+        return R
     else:
-        return create_2x2_network(figures)
+        H1 = create_relationship_diagram([figures[0], figures[1]])
+        V1 = create_relationship_diagram([figures[0], figures[2]])
+        R = (H1, V1)
+        return R
 
+def get_similarity_metric(a, b, problem):
 
-def get_similarity_metric(a, b):
-
-    added_h, removed_h, modified_h, same_h = dict_compare(a[0], b[0])
-    added_v, removed_v, modified_v, same_v = dict_compare(a[1], b[1])
-
-    return weighted_score(same_h) + weighted_score(same_v)
+    if problem.problemType == '3x3':
+        added_1, removed_1, modified_1, same_1 = dict_compare(a[0], b[0])
+        added_2, removed_2, modified_2, same_2 = dict_compare(a[1], b[1])
+        return weighted_score(same_1) + weighted_score(same_2)
+    else:
+        added, removed, modified, same = dict_compare(a[0], b[0])
+        return weighted_score(same)
 
 def weighted_score(s):
-
     score = 0
-
     for label in s:
         score +=1
 
     return score
-
 
 def agent_compare(init_network, H, V, problem, solution_num):
 
@@ -351,28 +316,32 @@ def agent_compare(init_network, H, V, problem, solution_num):
         V1 = init_network[2]
         V2 = init_network[3]
 
-        metrics = [get_similarity_metric(H1, H),
-                   get_similarity_metric(H2, H),
-                   get_similarity_metric(V1, V),
-                   get_similarity_metric(V2, V)]
+        metrics = [get_similarity_metric(H1, H, problem),
+                   get_similarity_metric(H2, H, problem),
+                   get_similarity_metric(V1, V, problem),
+                   get_similarity_metric(V2, V, problem)]
 
         result = float(sum(metrics))
         return result
 
     else:
 
-        result = [1, 2, 3, 4, 5, 6]
+        H1 = init_network[0]
+        V1 = init_network[1]
+
+        metrics = [get_similarity_metric(H1, H, problem),
+                   get_similarity_metric(V1, V, problem)]
+
+        result = float(sum(metrics))
         return result
 
+def normalize_scores(scores, problem):
 
-def normalize_scores(scores):
-
-    t = float(sum(scores))
-
-    if t == 0:
+    if sum(scores) == 0 and problem.problemType == '3x3':
         out = [.125, .125, .125, .125, .125, .125, .125, .125]
+    elif sum(scores) == 0 and problem.problemType == '2x2':
+        out = [.16, .16, .16, .16, .16, .16]
     else:
-
         m_score = max(scores)
         for i, score in enumerate(scores):
             if score != m_score:
@@ -383,18 +352,26 @@ def normalize_scores(scores):
 
     return out
 
-def pick_one(scores, figures, solutions):
+def finalize_answer(scores, figures, solutions, problem):
 
     comparisons = []
     for i, score in enumerate(scores):
 
         if score != 0.0:
-            x = (i, similarity(figures[7], solutions[i]))
+
+            if problem.problemType == '3x3':
+                x = (i, min(similarity(figures[7], solutions[i]), similarity(figures[5], solutions[i])))
+            else:
+                x = (i, min(similarity(figures[2], solutions[i]), similarity(figures[1], solutions[i])))
             comparisons.append(x)
 
     m = min(comparisons, key = lambda t: t[1])
 
-    scores = [0, 0, 0, 0, 0, 0, 0, 0]
+    if problem.problemType == '3x3':
+        scores = [0, 0, 0, 0, 0, 0, 0, 0]
+    else:
+        scores = [0, 0, 0, 0, 0, 0]
+
     scores[m[0]] = 1
 
     return scores
@@ -421,18 +398,22 @@ class Agent:
 
         for i, solution in enumerate(solutions):
 
-            # compare init_network with generated solutions
-            H = create_relationship_diagram([figures[6], figures[7], solution])
-            V = create_relationship_diagram([figures[2], figures[5], solution])
+            if problem.problemType == '3x3':
+                # compare init_network with generated solutions
+                H = create_relationship_diagram([figures[6], figures[7], solution])
+                V = create_relationship_diagram([figures[2], figures[5], solution])
+            else:
+                H = create_relationship_diagram([figures[2], solution])
+                V = create_relationship_diagram([figures[1], solution])
 
             score = agent_compare(init_network, H, V, problem, i + 1)
             scores.append(score)
 
-        scores = normalize_scores(scores)
+        scores = normalize_scores(scores, problem)
         print(scores)
 
         if 1.0 not in scores:
-            scores = pick_one(scores, figures, solutions)
+            scores = finalize_answer(scores, figures, solutions, problem)
 
         print(scores)
         print('given answer: ' + str(scores.index(max(scores)) + 1))
