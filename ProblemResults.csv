@@ -1,13 +1,13 @@
 Problem,Correct Confidence
 Basic Problem B-01,1.0
-Basic Problem B-02,1.0
+Basic Problem B-02,1
 Basic Problem B-03,1.0
-Basic Problem B-04,0
+Basic Problem B-04,1.0
 Basic Problem B-05,1.0
 Basic Problem B-06,0
-Basic Problem B-07,1.0
+Basic Problem B-07,0
 Basic Problem B-08,1.0
-Basic Problem B-09,1.0
-Basic Problem B-10,0
+Basic Problem B-09,0.0
+Basic Problem B-10,1.0
 Basic Problem B-11,1.0
 Basic Problem B-12,1.0

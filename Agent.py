@@ -82,6 +82,23 @@ def setup(problem):
 
     return figures, solutions
 
+def weighted_score(same):
+    score = 0
+    for key in same:
+
+        if key == 'equality':
+            score += 6
+        elif 'flip' in key:
+            score += 4
+        elif 'shape_delta' in key:
+            score += 4
+        elif 'rotated' in key:
+            score += 2
+        else:
+            score += 1
+
+    return score
+
 
 def dict_compare(d1, d2):
     # solution from
@@ -91,9 +108,28 @@ def dict_compare(d1, d2):
     intersect_keys = d1_keys.intersection(d2_keys)
     added = d1_keys - d2_keys
     removed = d2_keys - d1_keys
-    modified = {o: (d1[o], d2[o]) for o in intersect_keys if d1[o] != d2[o]}
+    modified = {o : (d1[o], d2[o]) for o in intersect_keys if d1[o] != d2[o]}
     same = set(o for o in intersect_keys if d1[o] == d2[o])
     return added, removed, modified, same
+
+def fill_ratio(figure):
+
+    filled_pixels = 0
+
+    img = Image.open(figure.visualFilename)
+    pixels = img.load()
+
+    width, height = img.size
+    pixels = img.load()
+    # first pass. find regions.
+    for x in range(width):
+        for y in range(height):
+            # look for a black pixel
+            if pixels[x, y] == (0, 0, 0, 255):  # black pixel
+                filled_pixels += 1
+
+    return filled_pixels / (width * height)
+
 
 def find_first_edge(figure):
 
@@ -108,6 +144,9 @@ def find_first_edge(figure):
             # look for a black pixel
             if pixels[x, y] == (0, 0, 0, 255):  # black pixel
                 return (x, y)
+
+
+    return (0, 0)
 
 def find_regions(figure):
     # solution modified from this stackoverflow answer:
@@ -165,27 +204,47 @@ def find_regions(figure):
 
     return list(regions.items())
 
-def calc_rms(source, compare):
+# def calc_rms(source, compare):
+#
+#     if hasattr(source, 'visualFilename'):
+#         source = Image.open(source.visualFilename)
+#         compare = Image.open(compare.visualFilename)
+#
+#     # http://effbot.org/zone/pil-comparing-images.htm#rms
+#     # calculate the root-mean-square difference between two images
+#     h = ImageChops.difference(source, compare).histogram()
+#     # calculate rms
+#     rms = math.sqrt(reduce(operator.add,
+#                                 map(lambda h, i: h * (i**2), h, range(256))
+#                                 ) / (float(source.size[0]) * source.size[1]))
+#
+#     return rms
 
-    if hasattr(source, 'visualFilename'):
-        source = Image.open(source.visualFilename)
-        compare = Image.open(compare.visualFilename)
+def calc_rms(im1, im2):
 
-    # http://effbot.org/zone/pil-comparing-images.htm#rms
-    # calculate the root-mean-square difference between two images
-    h = ImageChops.difference(source, compare).histogram()
-    # calculate rms
-    rms = math.sqrt(reduce(operator.add,
-                                map(lambda h, i: h * (i**2), h, range(256))
-                                ) / (float(source.size[0]) * source.size[1]))
+    ## http://effbot.org/zone/pil-comparing-images.htm#rms
+    ## calculate the root-mean-square difference between two images
 
+    if hasattr(im1, 'visualFilename'):
+        source = Image.open(im1.visualFilename)
+        compare = Image.open(im2.visualFilename)
+    else:
+        source = im1
+        compare = im2
+
+    "Calculate the root-mean-square difference between two images"
+    diff = ImageChops.difference(source, compare)
+    h = diff.histogram()
+    sq = (value*(idx**2) for idx, value in enumerate(h))
+    sum_of_squares = sum(sq)
+    rms = math.sqrt(sum_of_squares/float(source.size[0] * source.size[1]))
     return rms
 
 def similarity(source, compare):
     return round(calc_rms(source, compare), 0)
 
 def equality(source, compare):
-    if round(calc_rms(source, compare), 0) < 40.0:
+    if round(calc_rms(source, compare), 0) < 980.0:
         return True
     else:
         return False
@@ -204,6 +263,18 @@ def edge_comparison(source, compare):
     else:
         return 'unchanged'
 
+
+def fill_delta(source, compare):
+
+    source_ratio = fill_ratio(source)
+    compare_ratio = fill_ratio(compare)
+
+    if source_ratio < compare_ratio:
+        return 'added' #+ str(compare_count - source_count)
+    elif source_ratio > compare_ratio:
+        return 'removed' #+ str(source_count - compare_count)
+    else:
+        return 'unchanged'
 
 def shape_delta(source, compare):
     source_count = len(find_regions(source))
@@ -257,30 +328,53 @@ def get_transformation(figure1, figure2):
     if rotation(figure1, figure2) != None:
         transformations['rotation'] = rotation(figure1, figure2)
 
+    if equality(figure1, figure2):
+        transformations['equality'] = equality(figure1, figure2)
+
     if edge_comparison(figure1, figure2) != 'unchanged':
         transformations['edge_comparison'] = edge_comparison(figure1, figure2)
 
-    transformations['equality'] = equality(figure1, figure2)
+    if fill_delta(figure1, figure2) != 'unchanged':
+        transformations['fill_delta'] = fill_delta(figure1, figure2)
+
     transformations['shape_delta'] = shape_delta(figure1, figure2)
+
 
     return transformations
 
 def create_relationship_diagram(figures):
+    return get_transformation(figures[0], figures[1])
 
-    relationship_diagrams = []
-    for i in range(len(figures) - 1):
-        relationship_diagrams.append(get_transformation(figures[i], figures[i + 1]))
+def union(diagram1, diagram2):
+    added, removed, modified, same = dict_compare(diagram1, diagram2)
 
-    return relationship_diagrams
+    dic_union = {}
 
+    for key in same:
+        dic_union[key] = diagram1[key]
+
+    return dic_union
 
 def create_semantic_network(figures, problem):
 
     if problem.problemType == '3x3':
-        H1 = create_relationship_diagram([figures[0], figures[1], figures[2]])
-        H2 = create_relationship_diagram([figures[3], figures[4], figures[5]])
-        V1 = create_relationship_diagram([figures[0], figures[3], figures[6]])
-        V2 = create_relationship_diagram([figures[1], figures[4], figures[7]])
+
+        H_1A = create_relationship_diagram([figures[0], figures[1]])
+        H_1B = create_relationship_diagram([figures[1], figures[2]])
+        H1 = union(H_1A, H_1B)
+
+        H_2A = create_relationship_diagram([figures[3], figures[4]])
+        H_2B = create_relationship_diagram([figures[4], figures[5]])
+        H2 = union(H_2A, H_2B)
+
+        V_1A = create_relationship_diagram([figures[0], figures[3]])
+        V_1B = create_relationship_diagram([figures[3], figures[6]])
+        V1 = union(V_1A, V_1B)
+
+        V_2A = create_relationship_diagram([figures[1], figures[4]])
+        V_2B = create_relationship_diagram([figures[4], figures[7]])
+        V2 = union(V_2A, V_2B)
+
         R = (H1, H2, V1, V2)
         return R
     else:
@@ -292,19 +386,11 @@ def create_semantic_network(figures, problem):
 def get_similarity_metric(a, b, problem):
 
     if problem.problemType == '3x3':
-        added_1, removed_1, modified_1, same_1 = dict_compare(a[0], b[0])
-        added_2, removed_2, modified_2, same_2 = dict_compare(a[1], b[1])
-        return weighted_score(same_1) + weighted_score(same_2)
-    else:
-        added, removed, modified, same = dict_compare(a[0], b[0])
+        added, removed, modified, same = dict_compare(a, b)
         return weighted_score(same)
-
-def weighted_score(s):
-    score = 0
-    for label in s:
-        score +=1
-
-    return score
+    else:
+        added, removed, modified, same = dict_compare(a, b)
+        return weighted_score(same)
 
 def agent_compare(init_network, H, V, problem, solution_num):
 
@@ -400,8 +486,15 @@ class Agent:
 
             if problem.problemType == '3x3':
                 # compare init_network with generated solutions
-                H = create_relationship_diagram([figures[6], figures[7], solution])
-                V = create_relationship_diagram([figures[2], figures[5], solution])
+
+                H_A = create_relationship_diagram([figures[6], figures[7]])
+                H_B = create_relationship_diagram([figures[7], solution])
+                H = union(H_A, H_B)
+
+                V_A = create_relationship_diagram([figures[2], figures[5]])
+                V_B = create_relationship_diagram([figures[5], solution])
+                V = union(V_A, V_B)
+
             else:
                 H = create_relationship_diagram([figures[2], solution])
                 V = create_relationship_diagram([figures[1], solution])
