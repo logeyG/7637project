@@ -13,6 +13,7 @@ import operator
 # Install Pillow and uncomment this line to access image processing.
 from PIL import Image
 from PIL import ImageChops
+from PIL import ImageOps
 from functools import reduce
 
 
@@ -88,6 +89,8 @@ def weighted_score(same):
 
         if key == 'equality':
             score += 6
+        elif key == 'fill_delta':
+            score += 5
         elif 'flip' in key:
             score += 4
         elif 'shape_delta' in key:
@@ -331,14 +334,9 @@ def get_transformation(figure1, figure2):
     if equality(figure1, figure2):
         transformations['equality'] = equality(figure1, figure2)
 
-    if edge_comparison(figure1, figure2) != 'unchanged':
-        transformations['edge_comparison'] = edge_comparison(figure1, figure2)
-
-    if fill_delta(figure1, figure2) != 'unchanged':
-        transformations['fill_delta'] = fill_delta(figure1, figure2)
-
+    transformations['edge_comparison'] = edge_comparison(figure1, figure2)
+    transformations['fill_delta'] = fill_delta(figure1, figure2)
     transformations['shape_delta'] = shape_delta(figure1, figure2)
-
 
     return transformations
 
@@ -438,6 +436,17 @@ def normalize_scores(scores, problem):
 
     return out
 
+def image_union(figure1, figure2):
+
+    image1 = Image.open(figure1.visualFilename)
+    image2 = Image.open(figure2.visualFilename)
+
+    blended = Image.blend(image1, image2, .5)
+    output = ImageOps.grayscale(blended)
+    output.save('out-' + figure1.name + '-' + figure2.name + '.png')
+
+    return blended
+
 def finalize_answer(scores, figures, solutions, problem):
 
     comparisons = []
@@ -446,9 +455,13 @@ def finalize_answer(scores, figures, solutions, problem):
         if score != 0.0:
 
             if problem.problemType == '3x3':
-                x = (i, min(similarity(figures[7], solutions[i]), similarity(figures[5], solutions[i])))
+                merged = image_union(figures[5], figures[7])
+                solution = Image.open(solutions[i].visualFilename)
+                x = (i, similarity(merged, solution))
             else:
-                x = (i, min(similarity(figures[2], solutions[i]), similarity(figures[1], solutions[i])))
+                merged = image_union(figures[1], figures[2])
+                solution = Image.open(solutions[i].visualFilename)
+                x = (i, similarity(merged, solution))
             comparisons.append(x)
 
     m = min(comparisons, key = lambda t: t[1])
@@ -495,6 +508,7 @@ class Agent:
                 V_B = create_relationship_diagram([figures[5], solution])
                 V = union(V_A, V_B)
 
+                x = 1
             else:
                 H = create_relationship_diagram([figures[2], solution])
                 V = create_relationship_diagram([figures[1], solution])
