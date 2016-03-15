@@ -83,6 +83,7 @@ def setup(problem):
 
     return figures, solutions
 
+
 def weighted_score(same):
     score = 0
     for key in same:
@@ -111,9 +112,10 @@ def dict_compare(d1, d2):
     intersect_keys = d1_keys.intersection(d2_keys)
     added = d1_keys - d2_keys
     removed = d2_keys - d1_keys
-    modified = {o : (d1[o], d2[o]) for o in intersect_keys if d1[o] != d2[o]}
+    modified = {o: (d1[o], d2[o]) for o in intersect_keys if d1[o] != d2[o]}
     same = set(o for o in intersect_keys if d1[o] == d2[o])
     return added, removed, modified, same
+
 
 def fill_ratio(figure):
 
@@ -148,8 +150,8 @@ def find_first_edge(figure):
             if pixels[x, y] == (0, 0, 0, 255):  # black pixel
                 return (x, y)
 
-
     return (0, 0)
+
 
 def find_regions(figure):
     # solution modified from this stackoverflow answer:
@@ -223,10 +225,11 @@ def find_regions(figure):
 #
 #     return rms
 
+
 def calc_rms(im1, im2):
 
-    ## http://effbot.org/zone/pil-comparing-images.htm#rms
-    ## calculate the root-mean-square difference between two images
+    # http://effbot.org/zone/pil-comparing-images.htm#rms
+    # calculate the root-mean-square difference between two images
 
     if hasattr(im1, 'visualFilename'):
         source = Image.open(im1.visualFilename)
@@ -238,13 +241,15 @@ def calc_rms(im1, im2):
     "Calculate the root-mean-square difference between two images"
     diff = ImageChops.difference(source, compare)
     h = diff.histogram()
-    sq = (value*(idx**2) for idx, value in enumerate(h))
+    sq = (value * (idx**2) for idx, value in enumerate(h))
     sum_of_squares = sum(sq)
-    rms = math.sqrt(sum_of_squares/float(source.size[0] * source.size[1]))
+    rms = math.sqrt(sum_of_squares / float(source.size[0] * source.size[1]))
     return rms
+
 
 def similarity(source, compare):
     return round(calc_rms(source, compare), 0)
+
 
 def equality(source, compare):
     if round(calc_rms(source, compare), 0) < 980.0:
@@ -252,12 +257,13 @@ def equality(source, compare):
     else:
         return False
 
+
 def edge_comparison(source, compare):
 
-    source_distance = round(math.sqrt( math.pow(find_first_edge(source)[0], 2)
-                                       + math.pow(find_first_edge(source)[1], 2 )), 0)
-    compare_distance = round(math.sqrt( math.pow(find_first_edge(compare)[0], 2)
-                                        + math.pow(find_first_edge(compare)[1], 2 )), 0)
+    source_distance = round(math.sqrt(math.pow(find_first_edge(source)[0], 2)
+                                      + math.pow(find_first_edge(source)[1], 2)), 0)
+    compare_distance = round(math.sqrt(math.pow(find_first_edge(compare)[0], 2)
+                                       + math.pow(find_first_edge(compare)[1], 2)), 0)
 
     if source_distance > compare_distance and (source_distance - compare_distance > 5):
         return 'expanded'
@@ -273,22 +279,24 @@ def fill_delta(source, compare):
     compare_ratio = fill_ratio(compare)
 
     if source_ratio < compare_ratio:
-        return 'added' #+ str(compare_count - source_count)
+        return 'added'  # + str(compare_count - source_count)
     elif source_ratio > compare_ratio:
-        return 'removed' #+ str(source_count - compare_count)
+        return 'removed'  # + str(source_count - compare_count)
     else:
         return 'unchanged'
+
 
 def shape_delta(source, compare):
     source_count = len(find_regions(source))
     compare_count = len(find_regions(compare))
 
     if source_count < compare_count:
-        return 'added' #+ str(compare_count - source_count)
+        return 'added'  # + str(compare_count - source_count)
     elif source_count > compare_count:
-        return 'removed' #+ str(source_count - compare_count)
+        return 'removed'  # + str(source_count - compare_count)
     else:
         return 'unchanged'
+
 
 def h_flip(figure1, figure2):
     source = Image.open(figure1.visualFilename)
@@ -340,8 +348,10 @@ def get_transformation(figure1, figure2):
 
     return transformations
 
+
 def create_relationship_diagram(figures):
     return get_transformation(figures[0], figures[1])
+
 
 def union(diagram1, diagram2):
     added, removed, modified, same = dict_compare(diagram1, diagram2)
@@ -352,6 +362,7 @@ def union(diagram1, diagram2):
         dic_union[key] = diagram1[key]
 
     return dic_union
+
 
 def create_semantic_network(figures, problem):
 
@@ -381,6 +392,7 @@ def create_semantic_network(figures, problem):
         R = (H1, V1)
         return R
 
+
 def get_similarity_metric(a, b, problem):
 
     if problem.problemType == '3x3':
@@ -389,6 +401,7 @@ def get_similarity_metric(a, b, problem):
     else:
         added, removed, modified, same = dict_compare(a, b)
         return weighted_score(same)
+
 
 def agent_compare(init_network, H, V, problem, solution_num):
 
@@ -419,6 +432,7 @@ def agent_compare(init_network, H, V, problem, solution_num):
         result = float(sum(metrics))
         return result
 
+
 def normalize_scores(scores, problem):
 
     if sum(scores) == 0 and problem.problemType == '3x3':
@@ -436,16 +450,16 @@ def normalize_scores(scores, problem):
 
     return out
 
+
 def image_union(figure1, figure2):
 
     image1 = Image.open(figure1.visualFilename)
     image2 = Image.open(figure2.visualFilename)
 
-    blended = Image.blend(image1, image2, .5)
-    output = ImageOps.grayscale(blended)
-    output.save('out-' + figure1.name + '-' + figure2.name + '.png')
+    blended = ImageChops.darker(image1, image2)
 
     return blended
+
 
 def finalize_answer(scores, figures, solutions, problem):
 
@@ -464,7 +478,7 @@ def finalize_answer(scores, figures, solutions, problem):
                 x = (i, similarity(merged, solution))
             comparisons.append(x)
 
-    m = min(comparisons, key = lambda t: t[1])
+    m = min(comparisons, key=lambda t: t[1])
 
     if problem.problemType == '3x3':
         scores = [0, 0, 0, 0, 0, 0, 0, 0]
