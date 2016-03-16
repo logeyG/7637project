@@ -126,7 +126,6 @@ def fill_ratio(figure):
 
     width, height = img.size
     pixels = img.load()
-    # first pass. find regions.
     for x in range(width):
         for y in range(height):
             # look for a black pixel
@@ -143,7 +142,6 @@ def find_first_edge(figure):
 
     width, height = img.size
     pixels = img.load()
-    # first pass. find regions.
     for x in range(width):
         for y in range(height):
             # look for a black pixel
