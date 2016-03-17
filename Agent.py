@@ -9,13 +9,9 @@
 # These methods will be necessary for the project's main method to run.
 
 import math
-import operator
 # Install Pillow and uncomment this line to access image processing.
 from PIL import Image
 from PIL import ImageChops
-from PIL import ImageOps
-from functools import reduce
-
 
 class Region():
     # solution modified from this stackoverflow answer:
@@ -119,9 +115,12 @@ def dict_compare(d1, d2):
 
 def fill_ratio(figure):
 
-    filled_pixels = 0
+    if hasattr(figure, 'visualFilename'):
+        img = Image.open(figure.visualFilename)
+    else:
+        img = figure
 
-    img = Image.open(figure.visualFilename)
+    filled_pixels = 0
     pixels = img.load()
 
     width, height = img.size
@@ -250,7 +249,7 @@ def similarity(source, compare):
 
 
 def equality(source, compare):
-    if round(calc_rms(source, compare), 0) < 980.0:
+    if round(calc_rms(source, compare), 0) < 960.0:
         return True
     else:
         return False
@@ -324,31 +323,165 @@ def rotation(figure1, figure2):
         return None
 
 
-def get_transformation(figure1, figure2):
+def get_sizes(size_in, rows, columns):
+    # https://www.reddit.com/r/learnpython/comments/2jlv1e/
+    # python_script_to_take_an_image_and_cut_it_into_4/
+    width, height = size_in
+    new_width = width / columns
+    new_height = height / rows
+    sizes_out = []
+    for x in range(columns):
+        for y in range(rows):
+            sizes_out.append((
+                math.floor(x * new_width),
+                math.floor(y * new_height),
+                math.floor(x * new_width + new_width),
+                math.floor(y * new_height + new_height)))
+    return sizes_out
+
+def get_sections(figure, problemType):
+
+    image = Image.open(figure.visualFilename)
+    if problemType == '3x3':
+        sizes = get_sizes((184, 184), 3, 3)
+    else:
+        sizes = get_sizes((184, 184), 2, 2)
+    image_sections = []
+    for i, size in enumerate(sizes):
+        image_sections.append(image.crop(size))
+
+    return image_sections
+
+
+def find_alignment(figure, problemType):
+
+    image_sections = get_sections(figure, problemType)
+
+    pixel_ratios = []
+    for i, section in enumerate(image_sections):
+        pixel_ratios.append( (i, fill_ratio(section)) )
+
+    max_filled = max(pixel_ratios, key=lambda t: t[1])
+
+    if max_filled[0] == 0:
+        return ('left', 'top')
+    elif max_filled[0] == 1:
+        return ('left', 'center')
+    elif max_filled[0] == 2:
+        return ('left', 'bottom')
+
+    elif max_filled[0] == 3:
+        return ('center', 'top')
+    elif max_filled[0] == 4:
+        return ('center', 'center')
+    elif max_filled[0] == 5:
+        return ('center', 'bottom')
+
+    elif max_filled[0] == 6:
+        return ('right', 'top')
+    elif max_filled[0] == 7:
+        return ('right', 'center')
+    elif max_filled[0] == 8:
+        return ('right', 'bottom')
+
+def alignment(figure1, figure2, orientation, problemType):
+
+    alignment1 = find_alignment(figure1, problemType)
+    alignment2 = find_alignment(figure2, problemType)
+
+    keyword = ['', '']
+    if alignment1 == alignment2:
+        return 'unchanged'
+    else:
+
+        # x direction
+        if alignment1[0] == 'left':
+
+            if alignment2[0] == 'left':
+                keyword[0] = ''
+            if alignment2[0] == 'center':
+                keyword[0] = 'right'
+            if alignment2[0] == 'right':
+                keyword[0] = 'right'
+
+        if alignment1[0] == 'center':
+
+            if alignment2[0] == 'left':
+                keyword[0] = 'left'
+            if alignment2[0] == 'center':
+                keyword[0] = ''
+            if alignment2[0] == 'right':
+                keyword[0] = 'right'
+
+        if alignment1[0] == 'right':
+
+            if alignment2[0] == 'left':
+                keyword[0] = 'left'
+            if alignment2[0] == 'center':
+                keyword[0] = 'left'
+            if alignment2[0] == 'right':
+                keyword[0] = ''
+
+        # y direction
+        if alignment1[1] == 'top':
+
+            if alignment2[1] == 'top':
+                keyword[1] = ''
+            if alignment2[1] == 'center':
+                keyword[1] = 'down'
+            if alignment2[1] == 'bottom':
+                keyword[1] = 'down'
+
+        if alignment1[1] == 'center':
+
+            if alignment2[1] == 'top':
+                keyword[1] = 'up'
+            if alignment2[1] == 'center':
+                keyword[1] = ''
+            if alignment2[1] == 'bottom':
+                keyword[1] = 'down'
+
+        if alignment1[1] == 'bottom':
+
+            if alignment2[1] == 'top':
+                keyword[1] = 'up'
+            if alignment2[1] == 'center':
+                keyword[1] = 'up'
+            if alignment2[1] == 'bottom':
+                keyword[1] = ''
+
+        if orientation == 'horizontal':
+            return keyword[0]
+        else:
+            return keyword[1]
+
+def get_transformation(figure1, figure2, orientation, problemType):
 
     transformations = {}
 
-    if h_flip(figure1, figure2):
-        transformations['h_flip'] = True
+    # if h_flip(figure1, figure2):
+    #     transformations['h_flip'] = True
+    #
+    # if v_flip(figure1, figure2):
+    #     transformations['v_flip'] = True
+    #
+    # if rotation(figure1, figure2) != None:
+    #     transformations['rotation'] = rotation(figure1, figure2)
+    #
+    # if equality(figure1, figure2):
+    #     transformations['equality'] = equality(figure1, figure2)
 
-    if v_flip(figure1, figure2):
-        transformations['v_flip'] = True
-
-    if rotation(figure1, figure2) != None:
-        transformations['rotation'] = rotation(figure1, figure2)
-
-    if equality(figure1, figure2):
-        transformations['equality'] = equality(figure1, figure2)
-
+    transformations['alignment'] = alignment(figure1, figure2, orientation, problemType)
     transformations['edge_comparison'] = edge_comparison(figure1, figure2)
     transformations['fill_delta'] = fill_delta(figure1, figure2)
     transformations['shape_delta'] = shape_delta(figure1, figure2)
+    transformations['equality'] = equality(figure1, figure2)
 
     return transformations
 
 
-def create_relationship_diagram(figures):
-    return get_transformation(figures[0], figures[1])
+def create_relationship_diagram(figures, orientation, problemType='3x3'):
+    return get_transformation(figures[0], figures[1], orientation, problemType)
 
 
 def union(diagram1, diagram2):
@@ -366,27 +499,27 @@ def create_semantic_network(figures, problem):
 
     if problem.problemType == '3x3':
 
-        H_1A = create_relationship_diagram([figures[0], figures[1]])
-        H_1B = create_relationship_diagram([figures[1], figures[2]])
+        H_1A = create_relationship_diagram([figures[0], figures[1]], 'horizontal')
+        H_1B = create_relationship_diagram([figures[1], figures[2]], 'horizontal')
         H1 = union(H_1A, H_1B)
 
-        H_2A = create_relationship_diagram([figures[3], figures[4]])
-        H_2B = create_relationship_diagram([figures[4], figures[5]])
+        H_2A = create_relationship_diagram([figures[3], figures[4]], 'horizontal')
+        H_2B = create_relationship_diagram([figures[4], figures[5]], 'horizontal')
         H2 = union(H_2A, H_2B)
 
-        V_1A = create_relationship_diagram([figures[0], figures[3]])
-        V_1B = create_relationship_diagram([figures[3], figures[6]])
+        V_1A = create_relationship_diagram([figures[0], figures[3]], 'vertical')
+        V_1B = create_relationship_diagram([figures[3], figures[6]], 'vertical')
         V1 = union(V_1A, V_1B)
 
-        V_2A = create_relationship_diagram([figures[1], figures[4]])
-        V_2B = create_relationship_diagram([figures[4], figures[7]])
+        V_2A = create_relationship_diagram([figures[1], figures[4]], 'vertical')
+        V_2B = create_relationship_diagram([figures[4], figures[7]], 'vertical')
         V2 = union(V_2A, V_2B)
 
         R = (H1, H2, V1, V2)
         return R
     else:
-        H1 = create_relationship_diagram([figures[0], figures[1]])
-        V1 = create_relationship_diagram([figures[0], figures[2]])
+        H1 = create_relationship_diagram([figures[0], figures[1]], 'horizontal', '2x2')
+        V1 = create_relationship_diagram([figures[0], figures[2]], 'vertical', '2x2')
         R = (H1, V1)
         return R
 
@@ -458,9 +591,31 @@ def image_union(figure1, figure2):
 
     return blended
 
+def compare_corners(scores, figures, solutions, problem):
 
-def finalize_answer(scores, figures, solutions, problem):
+    possible_answers = []
+    for i, score in enumerate(scores):
+        if score != 0.0:
+            possible_answers.append( (i, solutions[i]))
 
+    comparisons = []
+    for answer in possible_answers:
+        x = ( answer[0], similarity(figures[0], answer[1]))
+        comparisons.append(x)
+
+    m = min(comparisons, key=lambda t: t[1])
+
+    if problem.problemType == '3x3':
+        scores = [0, 0, 0, 0, 0, 0, 0, 0]
+    else:
+        scores = [0, 0, 0, 0, 0, 0]
+
+    scores[m[0]] = 1
+
+    return scores
+
+
+def union_compare(scores, figures, solutions, problem):
     comparisons = []
     for i, score in enumerate(scores):
 
@@ -488,6 +643,14 @@ def finalize_answer(scores, figures, solutions, problem):
     return scores
 
 
+def finalize_answer(scores, figures, solutions, problem):
+
+    if equality(figures[2], figures[6]):
+        return compare_corners(scores, figures, solutions, problem)
+
+    else:
+        return union_compare(scores, figures, solutions, problem)
+
 class Agent:
     # The default constructor for your Agent. Make sure to execute any
     # processing necessary before your Agent starts solving problems here.
@@ -512,18 +675,17 @@ class Agent:
             if problem.problemType == '3x3':
                 # compare init_network with generated solutions
 
-                H_A = create_relationship_diagram([figures[6], figures[7]])
-                H_B = create_relationship_diagram([figures[7], solution])
+                H_A = create_relationship_diagram([figures[6], figures[7]], 'horizontal')
+                H_B = create_relationship_diagram([figures[7], solution], 'horizontal')
                 H = union(H_A, H_B)
 
-                V_A = create_relationship_diagram([figures[2], figures[5]])
-                V_B = create_relationship_diagram([figures[5], solution])
+                V_A = create_relationship_diagram([figures[2], figures[5]], 'vertical')
+                V_B = create_relationship_diagram([figures[5], solution], 'vertical')
                 V = union(V_A, V_B)
 
-                x = 1
             else:
-                H = create_relationship_diagram([figures[2], solution])
-                V = create_relationship_diagram([figures[1], solution])
+                H = create_relationship_diagram([figures[2], solution], 'horizontal', '2x2')
+                V = create_relationship_diagram([figures[1], solution], 'vertical', '2x2')
 
             score = agent_compare(init_network, H, V, problem, i + 1)
             scores.append(score)
