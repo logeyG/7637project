@@ -300,7 +300,6 @@ def h_flip(figure1, figure2):
     flipped = Image.open(figure2.visualFilename).transpose(Image.FLIP_LEFT_RIGHT)
     return equality(source, flipped)
 
-
 def v_flip(figure1, figure2):
     source = Image.open(figure1.visualFilename)
     flipped = Image.open(figure2.visualFilename).transpose(Image.FLIP_TOP_BOTTOM)
@@ -339,13 +338,10 @@ def get_sizes(size_in, rows, columns):
                 math.floor(y * new_height + new_height)))
     return sizes_out
 
-def get_sections(figure, problemType):
+def get_sections(figure, size_in, rows, columns):
 
     image = Image.open(figure.visualFilename)
-    if problemType == '3x3':
-        sizes = get_sizes((184, 184), 3, 3)
-    else:
-        sizes = get_sizes((184, 184), 2, 2)
+    sizes = get_sizes(size_in, rows, columns)
     image_sections = []
     for i, size in enumerate(sizes):
         image_sections.append(image.crop(size))
@@ -355,7 +351,10 @@ def get_sections(figure, problemType):
 
 def find_alignment(figure, problemType):
 
-    image_sections = get_sections(figure, problemType)
+    if problemType == '3x3':
+        image_sections = get_sections(figure, (184, 184), 3, 3)
+    else:
+        image_sections = get_sections(figure, (184, 184), 2, 2)
 
     pixel_ratios = []
     for i, section in enumerate(image_sections):
@@ -364,25 +363,25 @@ def find_alignment(figure, problemType):
     max_filled = max(pixel_ratios, key=lambda t: t[1])
 
     if max_filled[0] == 0:
-        return ('left', 'top')
+        return 'left', 'top'
     elif max_filled[0] == 1:
-        return ('left', 'center')
+        return 'left', 'center'
     elif max_filled[0] == 2:
-        return ('left', 'bottom')
+        return 'left', 'bottom'
 
     elif max_filled[0] == 3:
-        return ('center', 'top')
+        return'center', 'top'
     elif max_filled[0] == 4:
-        return ('center', 'center')
+        return 'center', 'center'
     elif max_filled[0] == 5:
-        return ('center', 'bottom')
+        return 'center', 'bottom'
 
     elif max_filled[0] == 6:
-        return ('right', 'top')
+        return 'right', 'top'
     elif max_filled[0] == 7:
-        return ('right', 'center')
+        return 'right', 'center'
     elif max_filled[0] == 8:
-        return ('right', 'bottom')
+        return 'right', 'bottom'
 
 def alignment(figure1, figure2, orientation, problemType):
 
@@ -474,6 +473,8 @@ def get_transformation(figure1, figure2, orientation, problemType):
     transformations['alignment'] = alignment(figure1, figure2, orientation, problemType)
     transformations['edge_comparison'] = edge_comparison(figure1, figure2)
     transformations['fill_delta'] = fill_delta(figure1, figure2)
+
+    # algorithm called by shape_delta not original implementation - source is cited
     transformations['shape_delta'] = shape_delta(figure1, figure2)
     transformations['equality'] = equality(figure1, figure2)
 
@@ -642,12 +643,56 @@ def union_compare(scores, figures, solutions, problem):
 
     return scores
 
+def reflected_within(H1, H2):
+
+    H1__A_sections = get_sections(H1[0], (184, 184), 1, 2)
+    H1__C_sections = get_sections(H1[1], (184, 184), 1, 2)
+
+    H2__D_sections = get_sections(H2[0], (184, 184), 1, 2)
+    H2__F_sections = get_sections(H2[1], (184, 184), 1, 2)
+
+    return (similarity(H1__A_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__A_sections[1]) < 965,
+            similarity(H1__C_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__C_sections[1]) < 965,
+            similarity(H2__D_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__D_sections[1])  < 965,
+            similarity(H2__F_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__F_sections[1]) < 965)
+
+def reflected_within_single(H1, H2):
+
+    H1__A_sections = get_sections(H1, (184, 184), 1, 2)
+    H1__C_sections = get_sections(H2, (184, 184), 1, 2)
+
+    return (similarity(H1__A_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__A_sections[1]) < 965,
+            similarity(H1__C_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__C_sections[1]) < 965)
+
+
+def find_reflected(scores, figures, solutions, problem):
+
+    for i, score in enumerate(scores):
+
+        if score != 0.0:
+            reflected_test = reflected_within_single(figures[6], solutions[i])
+
+            if reflected_test == (True, True):
+                if problem.problemType == '3x3':
+                    scores = [0, 0, 0, 0, 0, 0, 0, 0]
+                else:
+                    scores = [0, 0, 0, 0, 0, 0]
+
+                scores[i] = 1
+                return scores
+
+    return scores
+
 
 def finalize_answer(scores, figures, solutions, problem):
 
-    if equality(figures[2], figures[6]):
-        return compare_corners(scores, figures, solutions, problem)
-
+    if problem.problemType == '3x3':
+        if equality(figures[2], figures[6]):
+            return compare_corners(scores, figures, solutions, problem)
+        elif reflected_within((figures[0], figures[2]), (figures[3], figures[5])) == (True, True, True, True):
+            return find_reflected(scores, figures, solutions, problem)
+        else:
+            return union_compare(scores, figures, solutions, problem)
     else:
         return union_compare(scores, figures, solutions, problem)
 
