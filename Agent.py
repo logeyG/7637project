@@ -206,23 +206,6 @@ def find_regions(figure):
 
     return list(regions.items())
 
-# def calc_rms(source, compare):
-#
-#     if hasattr(source, 'visualFilename'):
-#         source = Image.open(source.visualFilename)
-#         compare = Image.open(compare.visualFilename)
-#
-#     # http://effbot.org/zone/pil-comparing-images.htm#rms
-#     # calculate the root-mean-square difference between two images
-#     h = ImageChops.difference(source, compare).histogram()
-#     # calculate rms
-#     rms = math.sqrt(reduce(operator.add,
-#                                 map(lambda h, i: h * (i**2), h, range(256))
-#                                 ) / (float(source.size[0]) * source.size[1]))
-#
-#     return rms
-
-
 def calc_rms(im1, im2):
 
     # http://effbot.org/zone/pil-comparing-images.htm#rms
@@ -651,10 +634,15 @@ def reflected_within(H1, H2):
     H2__D_sections = get_sections(H2[0], (184, 184), 1, 2)
     H2__F_sections = get_sections(H2[1], (184, 184), 1, 2)
 
-    return (similarity(H1__A_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__A_sections[1]) < 965,
-            similarity(H1__C_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__C_sections[1]) < 965,
-            similarity(H2__D_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__D_sections[1])  < 965,
-            similarity(H2__F_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__F_sections[1]) < 965)
+    x = similarity(H1__A_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__A_sections[1])
+    x2 =      similarity(H1__C_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__C_sections[1])
+    x3 =     similarity(H2__D_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__D_sections[1])
+    x4 =   similarity(H2__F_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__F_sections[1])
+
+    return (similarity(H1__A_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__A_sections[1]) <= 962.0,
+            similarity(H1__C_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__C_sections[1]) <= 958.0,
+            similarity(H2__D_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__D_sections[1]) <= 962.0,
+            similarity(H2__F_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__F_sections[1]) <= 958.0)
 
 def reflected_within_single(H1, H2):
 
@@ -687,6 +675,7 @@ def find_reflected(scores, figures, solutions, problem):
 def finalize_answer(scores, figures, solutions, problem):
 
     if problem.problemType == '3x3':
+
         if equality(figures[2], figures[6]):
             return compare_corners(scores, figures, solutions, problem)
         elif reflected_within((figures[0], figures[2]), (figures[3], figures[5])) == (True, True, True, True):
