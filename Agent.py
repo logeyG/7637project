@@ -14,7 +14,7 @@ from PIL import Image
 from PIL import ImageChops
 
 class Region():
-    # solution modified from this stackoverflow answer:
+    # solution modified from this StackOverflow answer:
     # http://stackoverflow.com/questions/1989987/my-own-ocr-program-in-python
 
     def __init__(self, x, y):
@@ -151,7 +151,7 @@ def find_first_edge(figure):
 
 
 def find_regions(figure):
-    # solution modified from this stackoverflow answer:
+    # solution modified from this StackOverflow answer:
     # http://stackoverflow.com/questions/1989987/my-own-ocr-program-in-python
     img = Image.open(figure.visualFilename)
     pixels = img.load()
@@ -575,6 +575,7 @@ def image_union(figure1, figure2):
 
     return blended
 
+
 def compare_corners(scores, figures, solutions, problem):
 
     possible_answers = []
@@ -633,11 +634,6 @@ def reflected_within(H1, H2):
 
     H2__D_sections = get_sections(H2[0], (184, 184), 1, 2)
     H2__F_sections = get_sections(H2[1], (184, 184), 1, 2)
-
-    x = similarity(H1__A_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__A_sections[1])
-    x2 =      similarity(H1__C_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__C_sections[1])
-    x3 =     similarity(H2__D_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__D_sections[1])
-    x4 =   similarity(H2__F_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__F_sections[1])
 
     return (similarity(H1__A_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__A_sections[1]) <= 962.0,
             similarity(H1__C_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__C_sections[1]) <= 958.0,
@@ -732,6 +728,6 @@ class Agent:
 
         print(scores)
         print('given answer: ' + str(scores.index(max(scores)) + 1))
-        print('actual answer: ' + str(problem.checkAnswer(scores)))
+        # print('actual answer: ' + str(problem.checkAnswer(scores)))
         print()
         return scores
