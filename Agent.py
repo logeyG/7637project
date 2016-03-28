@@ -258,9 +258,10 @@ def fill_delta(source, compare):
     source_ratio = fill_ratio(source)
     compare_ratio = fill_ratio(compare)
 
-    if source_ratio < compare_ratio:
+
+    if source_ratio < compare_ratio and abs(compare_ratio - source_ratio) > .05:
         return 'added'  # + str(compare_count - source_count)
-    elif source_ratio > compare_ratio:
+    elif source_ratio > compare_ratio and abs(source_ratio - compare_ratio) > .05:
         return 'removed'  # + str(source_count - compare_count)
     else:
         return 'unchanged'
@@ -454,7 +455,7 @@ def get_transformation(figure1, figure2, orientation, problemType):
     #     transformations['equality'] = equality(figure1, figure2)
 
     transformations['alignment'] = alignment(figure1, figure2, orientation, problemType)
-    transformations['edge_comparison'] = edge_comparison(figure1, figure2)
+    #transformations['edge_comparison'] = edge_comparison(figure1, figure2)
     transformations['fill_delta'] = fill_delta(figure1, figure2)
 
     # algorithm called by shape_delta not original implementation - source is cited
@@ -533,6 +534,8 @@ def agent_compare(init_network, H, V, problem, solution_num):
                    get_similarity_metric(V1, V, problem),
                    get_similarity_metric(V2, V, problem)]
 
+        if solution_num == 3:
+            x = 1
         result = float(sum(metrics))
         return result
 
@@ -599,6 +602,28 @@ def compare_corners(scores, figures, solutions, problem):
 
     return scores
 
+def compare_diagonal(scores, figures, solutions, problem):
+
+    possible_answers = []
+    for i, score in enumerate(scores):
+        if score != 0.0:
+            possible_answers.append( (i, solutions[i]))
+
+    comparisons = []
+    for answer in possible_answers:
+        x = ( answer[0], similarity(figures[0], answer[1]))
+        comparisons.append(x)
+
+    m = min(comparisons, key=lambda t: t[1])
+
+    if problem.problemType == '3x3':
+        scores = [0, 0, 0, 0, 0, 0, 0, 0]
+    else:
+        scores = [0, 0, 0, 0, 0, 0]
+
+    scores[m[0]] = 1
+
+    return scores
 
 def union_compare(scores, figures, solutions, problem):
     comparisons = []
@@ -667,19 +692,35 @@ def find_reflected(scores, figures, solutions, problem):
 
     return scores
 
+def generate_and_test(init_network, scores, figures, solutions, problem):
 
-def finalize_answer(scores, figures, solutions, problem):
+    for i, solution in enumerate(solutions):
 
-    if problem.problemType == '3x3':
+        if problem.problemType == '3x3':
+            # compare init_network with generated solutions
 
-        if equality(figures[2], figures[6]):
-            return compare_corners(scores, figures, solutions, problem)
-        elif reflected_within((figures[0], figures[2]), (figures[3], figures[5])) == (True, True, True, True):
-            return find_reflected(scores, figures, solutions, problem)
+            H_A = create_relationship_diagram([figures[6], figures[7]], 'horizontal')
+            H_B = create_relationship_diagram([figures[7], solution], 'horizontal')
+            H = union(H_A, H_B)
+
+            V_A = create_relationship_diagram([figures[2], figures[5]], 'vertical')
+            V_B = create_relationship_diagram([figures[5], solution], 'vertical')
+            V = union(V_A, V_B)
+
         else:
-            return union_compare(scores, figures, solutions, problem)
-    else:
-        return union_compare(scores, figures, solutions, problem)
+            H = create_relationship_diagram([figures[2], solution], 'horizontal', '2x2')
+            V = create_relationship_diagram([figures[1], solution], 'vertical', '2x2')
+
+        score = agent_compare(init_network, H, V, problem, i + 1)
+        scores.append(score)
+
+    scores = normalize_scores(scores, problem)
+    print(scores)
+
+    if 1.0 not in scores:
+        scores = union_compare(scores, figures, solutions, problem)
+
+    return scores
 
 class Agent:
     # The default constructor for your Agent. Make sure to execute any
@@ -700,34 +741,20 @@ class Agent:
 
         scores = []
 
-        for i, solution in enumerate(solutions):
+        # simple production rules first
+        if equality(figures[2], figures[6]):
+            scores = compare_corners(scores, figures, solutions, problem)
+        elif equality(figures[0], figures[4]):
+            scores = compare_diagonal(scores, figures, solutions, problem)
+        elif reflected_within((figures[0], figures[2]), (figures[3], figures[5])) == (True, True, True, True):
+            scores = find_reflected(scores, figures, solutions, problem)
+        else:
+            scores = generate_and_test(init_network, scores, figures, solutions, problem)
 
-            if problem.problemType == '3x3':
-                # compare init_network with generated solutions
-
-                H_A = create_relationship_diagram([figures[6], figures[7]], 'horizontal')
-                H_B = create_relationship_diagram([figures[7], solution], 'horizontal')
-                H = union(H_A, H_B)
-
-                V_A = create_relationship_diagram([figures[2], figures[5]], 'vertical')
-                V_B = create_relationship_diagram([figures[5], solution], 'vertical')
-                V = union(V_A, V_B)
-
-            else:
-                H = create_relationship_diagram([figures[2], solution], 'horizontal', '2x2')
-                V = create_relationship_diagram([figures[1], solution], 'vertical', '2x2')
-
-            score = agent_compare(init_network, H, V, problem, i + 1)
-            scores.append(score)
-
-        scores = normalize_scores(scores, problem)
-        print(scores)
-
-        if 1.0 not in scores:
-            scores = finalize_answer(scores, figures, solutions, problem)
-
-        print(scores)
-        print('given answer: ' + str(scores.index(max(scores)) + 1))
-        # print('actual answer: ' + str(problem.checkAnswer(scores)))
+        given = scores.index(max(scores)) + 1
+        actual = problem.checkAnswer(scores)
+        print('given answer: ' + str(given))
+        print('actual answer: ' + str(actual))
         print()
+
         return scores
