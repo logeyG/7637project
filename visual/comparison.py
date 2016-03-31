@@ -1,6 +1,7 @@
 from PIL import Image
 from visual import utility
 from visual import transformation
+from visual import algorithm
 
 def compare_corners(scores, figures, solutions, problem):
 
@@ -14,19 +15,12 @@ def compare_corners(scores, figures, solutions, problem):
 
     comparisons = []
     for answer in possible_answers:
-        x = ( answer[0], utility.similarity(figures[0], answer[1]))
+        x = ( answer[0], algorithm.calc_rms(figures[0], answer[1]))
         comparisons.append(x)
 
     m = min(comparisons, key=lambda t: t[1])
 
-    if problem.problemType == '3x3':
-        scores = [0, 0, 0, 0, 0, 0, 0, 0]
-    else:
-        scores = [0, 0, 0, 0, 0, 0]
-
-    scores[m[0]] = 1
-
-    return scores
+    return m
 
 def compare_diagonal(scores, figures, solutions, problem):
 
@@ -40,19 +34,12 @@ def compare_diagonal(scores, figures, solutions, problem):
 
     comparisons = []
     for answer in possible_answers:
-        x = ( answer[0], utility.similarity(figures[4], answer[1]))
+        x = ( answer[0], algorithm.calc_rms(figures[4], answer[1]))
         comparisons.append(x)
 
     m = min(comparisons, key=lambda t: t[1])
 
-    if problem.problemType == '3x3':
-        scores = [0, 0, 0, 0, 0, 0, 0, 0]
-    else:
-        scores = [0, 0, 0, 0, 0, 0]
-
-    scores[m[0]] = 1
-
-    return scores
+    return m
 
 def compare_union(scores, figures, solutions, problem):
 
@@ -64,23 +51,16 @@ def compare_union(scores, figures, solutions, problem):
             if problem.problemType == '3x3':
                 merged = utility.image_union(figures[5], figures[7])
                 solution = Image.open(solutions[i].visualFilename)
-                x = (i, utility.similarity(merged, solution))
+                x = (i, algorithm.calc_rms(merged, solution))
             else:
                 merged = utility.image_union(figures[1], figures[2])
                 solution = Image.open(solutions[i].visualFilename)
-                x = (i, utility.similarity(merged, solution))
+                x = (i, algorithm.calc_rms(merged, solution))
             comparisons.append(x)
 
     m = min(comparisons, key=lambda t: t[1])
 
-    if problem.problemType == '3x3':
-        scores = [0, 0, 0, 0, 0, 0, 0, 0]
-    else:
-        scores = [0, 0, 0, 0, 0, 0]
-
-    scores[m[0]] = 1
-
-    return scores
+    return m
 
 def compare_reflected(scores, figures, solutions, problem):
 

@@ -51,6 +51,17 @@ def image_union(figure1, figure2):
 
     return blended
 
+def get_score(m, problem):
+
+    if problem.problemType == '3x3':
+        scores = [0, 0, 0, 0, 0, 0, 0, 0]
+        scores[m[0]] = 1
+    else:
+        scores = [0, 0, 0, 0, 0, 0]
+        scores[m[0]] = 1
+
+    return scores
+
 def normalize_scores(scores, problem):
 
     if sum(scores) == 0 and problem.problemType == '3x3':
@@ -68,6 +79,5 @@ def normalize_scores(scores, problem):
 
     return out
 
-def similarity(source, compare):
-
-    return round(algorithm.calc_rms(source, compare), 0)
+def image_difference(source, compare):
+    return ImageChops.difference(source, compare).getbbox()

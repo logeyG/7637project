@@ -1,6 +1,7 @@
 from PIL import Image
 from PIL import ImageChops
 import math
+from visual import utility
 
 
 class Region():
@@ -102,9 +103,11 @@ def calc_rms(im1, im2):
     # calculate the root-mean-square difference between two images
     if hasattr(im1, 'visualFilename'):
         source = Image.open(im1.visualFilename)
-        compare = Image.open(im2.visualFilename)
     else:
         source = im1
+    if hasattr(im2, 'visualFilename'):
+        compare = Image.open(im2.visualFilename)
+    else:
         compare = im2
 
     "Calculate the root-mean-square difference between two images"
@@ -113,7 +116,7 @@ def calc_rms(im1, im2):
     sq = (value * (idx**2) for idx, value in enumerate(h))
     sum_of_squares = sum(sq)
     rms = math.sqrt(sum_of_squares / float(source.size[0] * source.size[1]))
-    return rms
+    return round(rms, 0)
 
 def fill_ratio(figure):
 
@@ -162,3 +165,23 @@ def get_sections(figure, size_in, rows, columns):
 
     return image_sections
 
+def reflected_within(H1, H2):
+
+    H1__A_sections = get_sections(H1[0], (184, 184), 1, 2)
+    H1__C_sections = get_sections(H1[1], (184, 184), 1, 2)
+
+    H2__D_sections = get_sections(H2[0], (184, 184), 1, 2)
+    H2__F_sections = get_sections(H2[1], (184, 184), 1, 2)
+
+    return (calc_rms(H1__A_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__A_sections[1]) <= 962.0,
+            calc_rms(H1__C_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__C_sections[1]) <= 958.0,
+            calc_rms(H2__D_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__D_sections[1]) <= 962.0,
+            calc_rms(H2__F_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__F_sections[1]) <= 958.0)
+
+def reflected_within_single(H1, H2):
+
+    H1__A_sections = get_sections(H1, (184, 184), 1, 2)
+    H1__C_sections = get_sections(H2, (184, 184), 1, 2)
+
+    return (calc_rms(H1__A_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__A_sections[1]) < 965,
+            calc_rms(H1__C_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__C_sections[1]) < 965)

@@ -12,7 +12,6 @@ from visual import transformation
 from visual import utility
 from visual import comparison
 
-
 def setup(problem):
 
     figures = None
@@ -63,7 +62,8 @@ def get_transformation(figure1, figure2, orientation, problemType):
 
     #transformations['alignment'] = alignment(figure1, figure2, orientation, problemType)
     #transformations['edge_comparison'] = edge_comparison(figure1, figure2)
-    transformations['fill_delta'] = transformation.fill_delta(figure1, figure2)
+    #transformations['fill_delta'] = transformation.fill_delta(figure1, figure2)
+    transformations['main_shape'] = transformation.main_shape(figure1, figure2)
 
     # algorithm called by shape_delta not original implementation - source is cited
     transformations['shape_delta'] = transformation.shape_delta(figure1, figure2)
@@ -119,8 +119,6 @@ def agent_compare(init_network, H, V, problem, solution_num):
                    utility.get_similarity_metric(V1, V, problem),
                    utility.get_similarity_metric(V2, V, problem)]
 
-        if solution_num == 6 or solution_num == 1:
-            x = 1
         result = float(sum(metrics))
         return result
 
@@ -161,7 +159,12 @@ def generate_and_test(init_network, scores, figures, solutions, problem):
     print(scores)
 
     if 1.0 not in scores:
-        scores = comparison.compare_union(scores, figures, solutions, problem)
+        m_union = comparison.compare_union(scores, figures, solutions, problem)
+        m_diagonal = comparison.compare_diagonal(scores, figures, solutions, problem)
+
+        possible_scores = [m_union, m_diagonal]
+        m = min(possible_scores, key=lambda t: t[1])
+        scores = utility.get_score(m, problem)
 
     return scores
 
@@ -183,11 +186,13 @@ class Agent:
 
         # compare corners
         if transformation.equality(figures[2], figures[6]):
-            scores = comparison.compare_corners(scores, figures, solutions, problem)
+            m = comparison.compare_corners(scores, figures, solutions, problem)
+            scores = utility.get_score(m, problem)
 
         # compare diagonals
         elif transformation.equality(figures[0], figures[4]):
-            scores = comparison.compare_diagonal(scores, figures, solutions, problem)
+            m = comparison.compare_diagonal(scores, figures, solutions, problem)
+            scores = utility.get_score(m, problem)
 
         # if shapes are reflected within each other
         elif transformation.reflected_within((figures[0], figures[2]), (figures[3], figures[5])) == (True, True, True, True):

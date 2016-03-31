@@ -1,8 +1,8 @@
 from visual import utility
 from visual import algorithm
 from PIL import Image
+from visual import shapes
 import math
-
 
 def equality(source, compare):
 
@@ -10,6 +10,25 @@ def equality(source, compare):
         return True
     else:
         return False
+
+def main_shape_match(figure):
+
+    comparison_shapes = shapes.load_shapes()
+    scores = []
+    for shape in comparison_shapes:
+        scores.append((shape.name, algorithm.calc_rms(figure, shape.object)))
+
+    return min(scores, key=lambda t: t[1])[0]
+
+def main_shape(source, compare):
+
+    source_shape = main_shape_match(source)
+    compare_shape = main_shape_match(compare)
+
+    if source_shape != compare_shape:
+        return compare_shape
+    else:
+        return 'unchanged'
 
 def edge_comparison(source, compare):
 
@@ -162,15 +181,15 @@ def reflected_within(H1, H2):
     H2__D_sections = algorithm.get_sections(H2[0], (184, 184), 1, 2)
     H2__F_sections = algorithm.get_sections(H2[1], (184, 184), 1, 2)
 
-    return (utility.similarity(H1__A_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__A_sections[1]) <= 962.0,
-            utility.similarity(H1__C_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__C_sections[1]) <= 958.0,
-            utility.similarity(H2__D_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__D_sections[1]) <= 962.0,
-            utility.similarity(H2__F_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__F_sections[1]) <= 958.0)
+    return (algorithm.calc_rms(H1__A_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__A_sections[1]) <= 962.0,
+            algorithm.calc_rms(H1__C_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__C_sections[1]) <= 958.0,
+            algorithm.calc_rms(H2__D_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__D_sections[1]) <= 962.0,
+            algorithm.calc_rms(H2__F_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H2__F_sections[1]) <= 958.0)
 
 def reflected_within_single(H1, H2):
 
     H1__A_sections = algorithm.get_sections(H1, (184, 184), 1, 2)
     H1__C_sections = algorithm.get_sections(H2, (184, 184), 1, 2)
 
-    return (utility.similarity(H1__A_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__A_sections[1]) < 965,
-            utility.similarity(H1__C_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__C_sections[1]) < 965)
+    return (algorithm.calc_rms(H1__A_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__A_sections[1]) < 965,
+            algorithm.calc_rms(H1__C_sections[0].transpose(Image.FLIP_LEFT_RIGHT), H1__C_sections[1]) < 965)
