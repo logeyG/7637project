@@ -11,6 +11,7 @@
 from visual import transformation
 from visual import utility
 from visual import comparison
+from visual import algorithm
 
 def setup(problem):
 
@@ -60,10 +61,10 @@ def get_transformation(figure1, figure2, orientation, problemType):
 
     transformations = {}
 
-    #transformations['alignment'] = alignment(figure1, figure2, orientation, problemType)
-    #transformations['edge_comparison'] = edge_comparison(figure1, figure2)
+    transformations['alignment'] = transformation.alignment(figure1, figure2, orientation, problemType)
+    transformations['edge_comparison'] = transformation.edge_comparison(figure1, figure2)
     #transformations['fill_delta'] = transformation.fill_delta(figure1, figure2)
-    transformations['main_shape'] = transformation.main_shape(figure1, figure2)
+    #transformations['main_shape'] = transformation.main_shape(figure1, figure2)
 
     # algorithm called by shape_delta not original implementation - source is cited
     transformations['shape_delta'] = transformation.shape_delta(figure1, figure2)
@@ -133,6 +134,66 @@ def agent_compare(init_network, H, V, problem, solution_num):
         result = float(sum(metrics))
         return result
 
+def get_image_op(figures):
+
+    xor = transformation.op_transform(figures[0], figures[1], 'xor')
+    xor_similarity = ('xor', algorithm.calc_rms(xor, figures[2]))
+
+    intersect = transformation.op_transform(figures[0], figures[1], 'intersect')
+    intersect_similarity = ('intersect', algorithm.calc_rms(intersect, figures[2]))
+
+    union = transformation.op_transform(figures[0], figures[1], 'union')
+    union_similarity = ('union', algorithm.calc_rms(union, figures[2]))
+
+    comparisons = [xor_similarity, intersect_similarity, union_similarity]
+    m = min(comparisons, key=lambda t: t[1])
+
+    return m[0]
+
+def determine_single_image_op(figures):
+
+    abc_op = get_image_op([figures[0], figures[1], figures[2]])
+    adg_op = get_image_op([figures[0], figures[3], figures[6]])
+
+    def_op = get_image_op([figures[3], figures[4], figures[5]])
+    beh_op = get_image_op([figures[1], figures[4], figures[7]])
+
+    ops = [abc_op, adg_op, def_op, beh_op]
+
+    return utility.most_common(ops)
+
+
+def image_op_solver(figures, solutions, problem):
+    operation = determine_single_image_op(figures)
+
+    horizontal_tester = transformation.op_transform(figures[6], figures[7], operation)
+    vertical_tester = transformation.op_transform(figures[2], figures[5], operation)
+
+    horizontal_scores = []
+    vertical_scores = []
+
+    for i, solution in enumerate(solutions):
+
+        x = algorithm.calc_rms(horizontal_tester, solution)
+        horizontal_scores.append( (i, x) )
+
+    for i, solution in enumerate(solutions):
+
+        x = algorithm.calc_rms(vertical_tester, solution)
+        vertical_scores.append( (i, x) )
+
+
+    m_horizontal = min(horizontal_scores, key=lambda t: t[1])
+    m_vertical = min(vertical_scores, key=lambda t: t[1])
+
+    if m_horizontal[0] == m_vertical[0]:
+        scores = utility.get_score(m_horizontal, problem)
+        return scores
+    else:
+        # need to determine which one to choose ?
+        scores = utility.get_score(m_vertical, problem)
+        return scores
+
 def generate_and_test(init_network, scores, figures, solutions, problem):
 
     for i, solution in enumerate(solutions):
@@ -159,12 +220,14 @@ def generate_and_test(init_network, scores, figures, solutions, problem):
     print(scores)
 
     if 1.0 not in scores:
-        m_union = comparison.compare_union(scores, figures, solutions, problem)
-        m_diagonal = comparison.compare_diagonal(scores, figures, solutions, problem)
+        #m_union = comparison.compare_union(scores, figures, solutions, problem)
+        #m_diagonal = comparison.compare_diagonal(scores, figures, solutions, problem)
 
-        possible_scores = [m_union, m_diagonal]
-        m = min(possible_scores, key=lambda t: t[1])
-        scores = utility.get_score(m, problem)
+        m_statistics = comparison.compare_rows(scores, figures, solutions, problem)
+
+        #possible_scores = [m_union, m_diagonal]
+        #m = min(possible_scores, key=lambda t: t[1])
+        scores = utility.get_score(m_statistics, problem)
 
     return scores
 
@@ -183,23 +246,18 @@ class Agent:
         figures, solutions = setup(problem)
 
         scores = []
-
-        # compare corners
-        if transformation.equality(figures[2], figures[6]):
-            m = comparison.compare_corners(scores, figures, solutions, problem)
-            scores = utility.get_score(m, problem)
-
         # compare diagonals
-        elif transformation.equality(figures[0], figures[4]):
+        if transformation.equality(figures[0], figures[4]):
+            print('compare diagonals chosen')
             m = comparison.compare_diagonal(scores, figures, solutions, problem)
             scores = utility.get_score(m, problem)
 
-        # if shapes are reflected within each other
-        elif transformation.reflected_within((figures[0], figures[2]), (figures[3], figures[5])) == (True, True, True, True):
-            scores = comparison.compare_reflected(scores, figures, solutions, problem)
-
+        elif 'E' in problem.name.split(' ')[2]:
+            print('xor, union, intersect solver')
+            scores = image_op_solver(figures, solutions, problem)
         # standard generate and test
         else:
+            print('generate & test chosen')
             # generate our initial semantic network to test against
             init_network = create_semantic_network(figures, problem)
             scores = generate_and_test(init_network, scores, figures, solutions, problem)

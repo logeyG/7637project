@@ -101,14 +101,7 @@ def calc_rms(im1, im2):
 
     # http://effbot.org/zone/pil-comparing-images.htm#rms
     # calculate the root-mean-square difference between two images
-    if hasattr(im1, 'visualFilename'):
-        source = Image.open(im1.visualFilename)
-    else:
-        source = im1
-    if hasattr(im2, 'visualFilename'):
-        compare = Image.open(im2.visualFilename)
-    else:
-        compare = im2
+    source, compare = utility.open_image(im1, im2)
 
     "Calculate the root-mean-square difference between two images"
     diff = ImageChops.difference(source, compare)
@@ -117,6 +110,46 @@ def calc_rms(im1, im2):
     sum_of_squares = sum(sq)
     rms = math.sqrt(sum_of_squares / float(source.size[0] * source.size[1]))
     return round(rms, 0)
+
+
+def image_difference(im1, im2):
+
+    source, compare = utility.open_image(im1, im2)
+    return ImageChops.difference(source, compare).getbbox()
+
+def intersect(source, compare):
+
+    pixels_to_remove = []
+
+    width, height = compare.size
+    compare_pixels = compare.load()
+    for x in range(width):
+        for y in range(height):
+            # look for a black pixel
+            if compare_pixels[x, y] == (0, 0, 0, 255):  # black pixel
+                pixels_to_remove.append((x, y))
+
+    width, height = source.size
+    source_pixels = source.load()
+    for x in range(width):
+        for y in range(height):
+
+            # fuzzy remove
+            if (x, y) in pixels_to_remove:
+                source_pixels[x, y] = (255, 255, 255, 255)
+
+                source_pixels[x + 1, y] = (255, 255, 255, 255)
+                source_pixels[x, y + 1] = (255, 255, 255, 255)
+                source_pixels[x - 1, y] = (255, 255, 255, 255)
+                source_pixels[x, y - 1] = (255, 255, 255, 255)
+
+                source_pixels[x + 2, y] = (255, 255, 255, 255)
+                source_pixels[x, y + 2] = (255, 255, 255, 255)
+                source_pixels[x - 2, y] = (255, 255, 255, 255)
+                source_pixels[x, y - 2] = (255, 255, 255, 255)
+
+    return source
+
 
 def fill_ratio(figure):
 

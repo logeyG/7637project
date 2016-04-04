@@ -1,6 +1,6 @@
 from PIL import Image
 from PIL import ImageChops
-from visual import algorithm
+import numpy as np
 
 def dict_compare(d1, d2):
 
@@ -79,5 +79,27 @@ def normalize_scores(scores, problem):
 
     return out
 
-def image_difference(source, compare):
-    return ImageChops.difference(source, compare).getbbox()
+def open_image(im1, im2):
+
+    if hasattr(im1, 'visualFilename'):
+        source = Image.open(im1.visualFilename)
+    else:
+        source = im1
+    if hasattr(im2, 'visualFilename'):
+        compare = Image.open(im2.visualFilename)
+    else:
+        compare = im2
+
+    return source, compare
+
+
+def closest_node(node, nodes):
+
+    # http://codereview.stackexchange.com/questions/
+    # 28207/finding-the-closest-point-to-a-list-of-points
+    nodes = np.asarray(nodes)
+    dist_2 = np.sum((nodes - node)**2, axis=1)
+    return np.argmin(dist_2)
+
+def most_common(lst):
+    return max(set(lst), key=lst.count)

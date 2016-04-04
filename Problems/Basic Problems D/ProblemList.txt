@@ -7,3 +7,6 @@ Basic Problem D-06
 Basic Problem D-07
 Basic Problem D-08
 Basic Problem D-09
+Basic Problem D-10
+Basic Problem D-11
+Basic Problem D-12

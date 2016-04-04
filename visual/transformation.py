@@ -1,7 +1,8 @@
-from visual import utility
 from visual import algorithm
 from PIL import Image
+from PIL import ImageChops
 from visual import shapes
+from visual import utility
 import math
 
 def equality(source, compare):
@@ -16,9 +17,30 @@ def main_shape_match(figure):
     comparison_shapes = shapes.load_shapes()
     scores = []
     for shape in comparison_shapes:
-        scores.append((shape.name, algorithm.calc_rms(figure, shape.object)))
+        scores.append((shape.name, algorithm.image_difference(figure, shape.object)))
 
-    return min(scores, key=lambda t: t[1])[0]
+    m = min(scores, key=lambda t: t[1])
+    return m[0]
+
+
+def op_transform(im1, im2, operation):
+
+    source, compare = utility.open_image(im1, im2)
+
+    if operation == 'xor':
+        screen = ImageChops.screen(compare, source)
+        multiply = ImageChops.screen(source, compare)
+        x = ImageChops.subtract(screen, multiply)
+        x.save(im1.name + im2.name + '_xor.jpg')
+        return x
+    elif operation == 'union':
+        x = ImageChops.multiply(source, compare)
+        x.save(im1.name + im2.name + '_union.jpg')
+        return x
+    elif operation == 'intersect':
+        x = algorithm.intersect(source, compare)
+        x.save(im1.name + im2.name + '_intersect.jpg')
+        return x
 
 def main_shape(source, compare):
 

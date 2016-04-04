@@ -15,12 +15,40 @@ def compare_corners(scores, figures, solutions, problem):
 
     comparisons = []
     for answer in possible_answers:
-        x = ( answer[0], algorithm.calc_rms(figures[0], answer[1]))
+        x = ( answer[0], algorithm.calc_rms(figures[0], answer[1]) )
         comparisons.append(x)
 
     m = min(comparisons, key=lambda t: t[1])
 
     return m
+
+def compare_rows(scores, figures, solutions, problem):
+
+    abc_pixel_count = algorithm.fill_ratio(figures[0]) + algorithm.fill_ratio(figures[1]) \
+                      + algorithm.fill_ratio(figures[2])
+
+    abc_shape_count = algorithm.find_regions(figures[0]) + algorithm.find_regions(figures[1]) \
+                        + algorithm.find_regions(figures[2])
+
+    gh_pixel_count = algorithm.fill_ratio(figures[6]) + algorithm.fill_ratio(figures[7])
+    gh_shape_count = algorithm.find_regions(figures[6]) + algorithm.find_regions(figures[7])
+
+    possible_answers = []
+    for i, score in enumerate(scores):
+        if score != 0.0:
+            possible_answers.append( (i, solutions[i]))
+
+    comparisons = []
+    for answer in possible_answers:
+        x = (gh_pixel_count + algorithm.fill_ratio(answer[1]), len(gh_shape_count) + len(algorithm.find_regions(answer[1])) )
+        comparisons.append(x)
+
+    x = (abc_pixel_count, len(abc_shape_count))
+
+    closest = utility.closest_node(x, comparisons)
+
+    return (possible_answers[closest][0], possible_answers[closest][1])
+
 
 def compare_diagonal(scores, figures, solutions, problem):
 
