@@ -63,7 +63,7 @@ def get_transformation(figure1, figure2, orientation, problemType):
 
     #transformations['alignment'] = transformation.alignment(figure1, figure2, orientation, problemType)
     transformations['size'] = transformation.size_comparison(figure1, figure2)
-    #transformations['fill_delta'] = transformation.fill_delta(figure1, figure2)
+    transformations['fill_delta'] = transformation.fill_delta(figure1, figure2)
 
     if transformation.inner_shape(figure1, figure2) != None:
         transformations['inner_shape'] = transformation.inner_shape(figure1, figure2)
@@ -100,7 +100,8 @@ def create_semantic_network(figures, problem):
         V_2B = create_relationship_diagram([figures[4], figures[7]], 'vertical')
         V2 = utility.union(V_2A, V_2B)
 
-        R = (H1, H2, V1, V2)
+        D = create_relationship_diagram([figures[0], figures[4]], 'diagonal')
+        R = (H1, H2, V1, V2, D)
         return R
     else:
         H1 = create_relationship_diagram([figures[0], figures[1]], 'horizontal', '2x2')
@@ -109,7 +110,7 @@ def create_semantic_network(figures, problem):
         return R
 
 
-def agent_compare(init_network, H, V, problem, solution_num):
+def agent_compare(init_network, H, V, D, problem, solution_num):
 
     if problem.problemType == '3x3':
 
@@ -119,10 +120,13 @@ def agent_compare(init_network, H, V, problem, solution_num):
         V1 = init_network[2]
         V2 = init_network[3]
 
+        D1 = init_network[4]
+
         metrics = [utility.get_similarity_metric(H1, H, problem),
                    utility.get_similarity_metric(H2, H, problem),
                    utility.get_similarity_metric(V1, V, problem),
-                   utility.get_similarity_metric(V2, V, problem)]
+                   utility.get_similarity_metric(V2, V, problem),
+                   utility.get_similarity_metric(D1, D, problem)]
 
         result = float(sum(metrics))
         return result
@@ -210,8 +214,6 @@ def generate_and_test(init_network, scores, figures, solutions, problem):
 
         if problem.problemType == '3x3':
 
-            global global_solution
-            global_solution = i + 1
             # compare init_network with generated solutions
             H_A = create_relationship_diagram([figures[6], figures[7]], 'horizontal')
             H_B = create_relationship_diagram([figures[7], solution], 'horizontal')
@@ -221,18 +223,21 @@ def generate_and_test(init_network, scores, figures, solutions, problem):
             V_B = create_relationship_diagram([figures[5], solution], 'vertical')
             V = utility.union(V_A, V_B)
 
+            D = create_relationship_diagram([figures[4], solution], 'diagonal')
+
         else:
             H = create_relationship_diagram([figures[2], solution], 'horizontal', '2x2')
             V = create_relationship_diagram([figures[1], solution], 'vertical', '2x2')
+            D = None
 
-        score = agent_compare(init_network, H, V, problem, i + 1)
+        score = agent_compare(init_network, H, V, D, problem, i + 1)
         scores.append(score)
 
     scores = utility.normalize_scores(scores, problem)
     print(scores)
 
     if 1.0 not in scores:
-        m_union = comparison.compare_union(scores, figures, solutions, problem)
+        #m_union = comparison.compare_union(scores, figures, solutions, problem)
         m_diagonal = comparison.compare_diagonal(scores, figures, solutions, problem)
         #init_set = [figures[0], figures[1], figures[2]]
         #solution_set = [figures[6], figures[7]]
@@ -242,7 +247,7 @@ def generate_and_test(init_network, scores, figures, solutions, problem):
         #solution_set = [figures[2], figures[5]]
         #col_statistics = comparison.compare_rows_or_cols(scores, init_set, solution_set, solutions)
 
-        possible_scores = [m_union, m_diagonal]
+        possible_scores = [m_diagonal]
         m = min(possible_scores, key=lambda t: t[1])
         scores = utility.get_score(m, problem)
 
@@ -263,18 +268,17 @@ class Agent:
         figures, solutions = setup(problem)
 
         scores = []
-        # # compare diagonals
-        # if transformation.equality(figures[0], figures[4]):
-        #     print('compare diagonals chosen')
-        #     m = comparison.compare_diagonal(scores, figures, solutions, problem)
-        #     scores = utility.get_score(m, problem)
-
-        if 'E' in problem.name.split(' ')[2]:
+        # compare diagonals
+        if transformation.equality(figures[0], figures[4]) and transformation.equality(figures[1], figures[5]) and transformation.equality(figures[3], figures[7]):
+            print('compare diagonals chosen')
+            m = comparison.compare_diagonal(scores, figures, solutions, problem)
+            scores = utility.get_score(m, problem)
+        elif 'E' in problem.name.split(' ')[2]:
             print('xor, union, intersect solver')
             scores = image_op_solver(figures, solutions, problem)
         # standard generate and test
         else:
-            print('generate & test chosen')
+            print('generate & test solver')
             # generate our initial semantic network to test against
             init_network = create_semantic_network(figures, problem)
             scores = generate_and_test(init_network, scores, figures, solutions, problem)
