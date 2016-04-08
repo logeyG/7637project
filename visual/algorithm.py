@@ -1,7 +1,10 @@
 from PIL import Image
 from PIL import ImageChops
-import math
 from visual import utility
+from operator import itemgetter
+import math
+import numpy
+
 
 
 class Region():
@@ -40,11 +43,63 @@ def find_first_edge(figure):
     return (0, 0)
 
 
+def find_image_size(figure):
+
+    img = Image.open(figure.visualFilename)
+    pixels = img.load()
+    width, height = img.size
+    pixels = img.load()
+
+    black_pixels = []
+    for x in range(width):
+        for y in range(height):
+            # look for a black pixel
+            if pixels[x, y] == (0, 0, 0, 255):  # black pixel
+                black_pixels.append((x, y))
+
+    x_black = min(black_pixels, key=itemgetter(1))[1], max(black_pixels, key=itemgetter(1))[1]
+    y_black = min(black_pixels)[0], max(black_pixels)[0]
+
+    b_width = x_black[1] - x_black[0]
+    b_height = y_black[1] - y_black[0]
+
+    return b_width * b_height
+
+def get_center(blobs):
+
+    closest = []
+
+    for blob in blobs:
+        nodes = utility.convert_to_easy_array(blob.load())
+        closest.append(nodes[utility.closest_node((92, 92), nodes)])
+
+    return utility.closest_node((92, 92), closest)
+
+def write_blobs(blobs):
+
+    outer_shapes = Image.new("RGBA", (184, 184), "white")
+    outer_pixels = outer_shapes.load()
+
+    for blob in blobs:
+        pixels = blob.load()
+         # first pass. find regions.
+        for x in range(184):
+            for y in range(184):
+            # look for a black pixel
+                if pixels[x, y] == (0, 0, 0, 255):  # black pixel
+                    outer_pixels[x, y] = (0, 0, 0, 255)
+
+    return outer_shapes
+
 def find_regions(figure):
 
     # solution modified from this StackOverflow answer:
     # http://stackoverflow.com/questions/1989987/my-own-ocr-program-in-python
-    img = Image.open(figure.visualFilename)
+
+    if isinstance(figure, dict):
+        img = Image.open(figure['visualFilename'])
+    else:
+        img = Image.open(figure.visualFilename)
     pixels = img.load()
 
     width, height = img.size
@@ -97,6 +152,42 @@ def find_regions(figure):
 
     return list(regions.items())
 
+def get_blobs(regions):
+
+    blobs = []
+    for region in regions:
+
+        pixels = region[1]._pixels
+        blob = Image.new("RGBA", (184, 184), "white")
+
+        blob_pixels = blob.load()
+        for p in pixels:
+            blob_pixels[p[0], p[1]] = (0, 0, 0, 255)
+
+        blobs.append(blob)
+
+    return blobs
+
+
+def ncc(im1, im2):
+
+    n = 33856
+    image, template = utility.open_image(im1, im2)
+
+    np_image = numpy.asarray(image.getdata())
+    np_template = numpy.asarray(template.getdata())
+
+    image_mean = np_image.mean()
+    image_std = np_image.std()
+
+    template_mean = np_template.mean()
+    template_std = np_template.std()
+
+    s = sum(  ( image_mean / image_std ) * ( template_mean / template_std)  )
+    x = 1 / n * s
+
+    return x
+
 def calc_rms(im1, im2):
 
     # http://effbot.org/zone/pil-comparing-images.htm#rms
@@ -117,39 +208,92 @@ def image_difference(im1, im2):
     source, compare = utility.open_image(im1, im2)
     return ImageChops.difference(source, compare).getbbox()
 
-def intersect(source, compare):
+def subtract(source, compare):
 
-    pixels_to_remove = []
-
-    width, height = compare.size
     compare_pixels = compare.load()
-    for x in range(width):
-        for y in range(height):
-            # look for a black pixel
-            if compare_pixels[x, y] == (0, 0, 0, 255):  # black pixel
-                pixels_to_remove.append((x, y))
-
     width, height = source.size
     source_pixels = source.load()
+
     for x in range(width):
         for y in range(height):
-
             # fuzzy remove
-            if (x, y) in pixels_to_remove:
-                source_pixels[x, y] = (255, 255, 255, 255)
+            if compare_pixels[x, y] == (0, 0, 0, 255):
 
+                source_pixels[x, y] = (255, 255, 255, 255)
                 source_pixels[x + 1, y] = (255, 255, 255, 255)
                 source_pixels[x, y + 1] = (255, 255, 255, 255)
                 source_pixels[x - 1, y] = (255, 255, 255, 255)
                 source_pixels[x, y - 1] = (255, 255, 255, 255)
 
-                source_pixels[x + 2, y] = (255, 255, 255, 255)
-                source_pixels[x, y + 2] = (255, 255, 255, 255)
-                source_pixels[x - 2, y] = (255, 255, 255, 255)
-                source_pixels[x, y - 2] = (255, 255, 255, 255)
-
     return source
 
+def intersect(source, compare):
+
+    width, height = 184, 184
+    compare_pixels = compare.load()
+    source_pixels = source.load()
+
+    intersect_image = Image.new("RGBA", (width, height), "white")
+    intersect_pixels = intersect_image.load()
+
+    for x in range(width):
+        for y in range(height):
+            # fuzzy remove
+            if compare_pixels[x, y] == (0, 0, 0, 255) and source_pixels[x, y] == (0, 0, 0, 255):
+                intersect_pixels[x, y] = (0, 0, 0, 255)
+
+    return intersect_image
+
+def modified_subtract(source, compare, orientation):
+
+    width, height = 184, 184
+    compare_pixels = compare.load()
+    source_pixels = source.load()
+
+    for x in range(width):
+        for y in range(height):
+            # fuzzy remove
+            if compare_pixels[x, y] == (0, 0, 0, 255):
+                if orientation == 'horizontal':
+                    if x >= 51:
+                        source_pixels[x - 51, y] = (255, 255, 255, 255)
+                elif orientation == 'vertical':
+                    if y < (184 - 51):
+                        source_pixels[x, y + 51] = (255, 255, 255, 255)
+
+    mod_image = Image.new("RGBA", (width, height), "white")
+    mod_pixels = mod_image.load()
+
+    for x in range(width):
+        for y in range(height):
+            if source_pixels[x, y] == (0, 0, 0, 255):
+                if orientation == 'horizontal':
+                    if x >= 20:
+                        mod_pixels[x - 20, y] = (0, 0, 0, 255)
+                elif orientation == 'vertical':
+                    if y < (184 - 20):
+                        mod_pixels[x, y + 20] = (0, 0, 0, 255)
+
+    #source.show()
+    return mod_image
+
+def xor(source, compare):
+
+    width, height = source.size
+
+    source_pixels = source.load()
+    compare_pixels = compare.load()
+
+    xor_image = Image.new("RGBA", (width, height), "white")
+    xor_pixels = xor_image.load()
+
+    for x in range(width):
+        for y in range(height):
+            if (source_pixels[x, y] == (0, 0, 0, 255) and compare_pixels[x, y] != (0, 0, 0, 255)
+                or source_pixels[x, y] != (0, 0, 0, 255) and compare_pixels[x, y] == (0, 0, 0, 255)):
+                xor_pixels[x, y] = (0, 0, 0, 255)
+
+    return xor_image
 
 def fill_ratio(figure):
 

@@ -7,61 +7,85 @@ import math
 
 def equality(source, compare):
 
-    if round(algorithm.calc_rms(source, compare), 0) < 960.0:
+    if round(algorithm.calc_rms(source, compare), 0) < 970.0:
         return True
     else:
         return False
 
-def main_shape_match(figure):
+def shape_match(figure):
 
     comparison_shapes = shapes.load_shapes()
     scores = []
     for shape in comparison_shapes:
-        scores.append((shape.name, algorithm.image_difference(figure, shape.object)))
+
+        blobs = algorithm.get_blobs(algorithm.find_regions(figure))
+
+        # need to get inner figure object
+        scores.append((shape.name, algorithm.calc_rms(blobs[-1], shape.object)))
 
     m = min(scores, key=lambda t: t[1])
     return m[0]
-
 
 def op_transform(im1, im2, operation):
 
     source, compare = utility.open_image(im1, im2)
 
     if operation == 'xor':
-        screen = ImageChops.screen(compare, source)
-        multiply = ImageChops.screen(source, compare)
-        x = ImageChops.subtract(screen, multiply)
-        x.save(im1.name + im2.name + '_xor.jpg')
+        x = algorithm.xor(source, compare)
         return x
     elif operation == 'union':
         x = ImageChops.multiply(source, compare)
-        x.save(im1.name + im2.name + '_union.jpg')
+        return x
+    elif operation == 'subtract':
+        x = algorithm.subtract(source, compare)
         return x
     elif operation == 'intersect':
         x = algorithm.intersect(source, compare)
-        x.save(im1.name + im2.name + '_intersect.jpg')
+        return x
+    elif operation == 'modified-subtract-horizontal':
+        x = algorithm.modified_subtract(source, compare, 'horizontal')
+        return x
+    elif operation == 'modified-subtract-vertical':
+        x = algorithm.modified_subtract(source, compare, 'vertical')
         return x
 
-def main_shape(source, compare):
+def outer_shape(source, compare):
 
-    source_shape = main_shape_match(source)
-    compare_shape = main_shape_match(compare)
+    source_blobs = algorithm.get_blobs(algorithm.find_regions(source))
+    compare_blobs = algorithm.get_blobs(algorithm.find_regions(compare))
 
-    if source_shape != compare_shape:
-        return compare_shape
+    if len(source_blobs) < 2 or len(compare_blobs) < 2:
+        return None
     else:
-        return 'unchanged'
+        source_inner = algorithm.get_center(source_blobs)
+        compare_inner = algorithm.get_center(compare_blobs)
 
-def edge_comparison(source, compare):
+        source_blobs.pop(source_inner)
+        compare_blobs.pop(compare_inner)
 
-    source_distance = round(math.sqrt(math.pow(algorithm.find_first_edge(source)[0], 2)
-                                      + math.pow(algorithm.find_first_edge(source)[1], 2)), 0)
-    compare_distance = round(math.sqrt(math.pow(algorithm.find_first_edge(compare)[0], 2)
-                                       + math.pow(algorithm.find_first_edge(compare)[1], 2)), 0)
+        source_outer = algorithm.write_blobs(source_blobs)
+        compare_outer = algorithm.write_blobs(compare_blobs)
 
-    if source_distance > compare_distance and (source_distance - compare_distance > 5):
+        return equality(source_outer, compare_outer)
+
+def inner_shape(source, compare):
+
+    source_blobs = algorithm.get_blobs(algorithm.find_regions(source))
+    compare_blobs = algorithm.get_blobs(algorithm.find_regions(compare))
+
+    source_inner = source_blobs[algorithm.get_center(source_blobs)]
+    compare_inner = compare_blobs[algorithm.get_center(compare_blobs)]
+
+    return equality(source_inner, compare_inner)
+
+def size_comparison(source, compare):
+
+    source_size = algorithm.find_image_size(source)
+    compare_size = algorithm.find_image_size(compare)
+
+    if compare_size > source_size and (compare_size - source_size) > 1000:
         return 'expanded'
-    elif source_distance < compare_distance and (compare_distance - source_distance > 5):
+    elif source_size > compare_size and (source_size - compare_size) > 1000:
         return 'contracted'
     else:
         return 'unchanged'

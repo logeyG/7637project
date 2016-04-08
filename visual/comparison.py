@@ -22,16 +22,16 @@ def compare_corners(scores, figures, solutions, problem):
 
     return m
 
-def compare_rows(scores, figures, solutions, problem):
+def compare_rows_or_cols(scores, init_set, solution_set, solutions):
 
-    abc_pixel_count = algorithm.fill_ratio(figures[0]) + algorithm.fill_ratio(figures[1]) \
-                      + algorithm.fill_ratio(figures[2])
+    abc_pixel_count = algorithm.fill_ratio(init_set[0]) + algorithm.fill_ratio(init_set[1]) \
+                      + algorithm.fill_ratio(init_set[2])
 
-    abc_shape_count = algorithm.find_regions(figures[0]) + algorithm.find_regions(figures[1]) \
-                        + algorithm.find_regions(figures[2])
+    abc_shape_count = algorithm.find_regions(init_set[0]) + algorithm.find_regions(init_set[1]) \
+                        + algorithm.find_regions(init_set[2])
 
-    gh_pixel_count = algorithm.fill_ratio(figures[6]) + algorithm.fill_ratio(figures[7])
-    gh_shape_count = algorithm.find_regions(figures[6]) + algorithm.find_regions(figures[7])
+    gh_pixel_count = algorithm.fill_ratio(solution_set[0]) + algorithm.fill_ratio(solution_set[1])
+    gh_shape_count = algorithm.find_regions(solution_set[0]) + algorithm.find_regions(solution_set[1])
 
     possible_answers = []
     for i, score in enumerate(scores):

@@ -61,14 +61,18 @@ def get_transformation(figure1, figure2, orientation, problemType):
 
     transformations = {}
 
-    transformations['alignment'] = transformation.alignment(figure1, figure2, orientation, problemType)
-    transformations['edge_comparison'] = transformation.edge_comparison(figure1, figure2)
+    #transformations['alignment'] = transformation.alignment(figure1, figure2, orientation, problemType)
+    transformations['size'] = transformation.size_comparison(figure1, figure2)
     #transformations['fill_delta'] = transformation.fill_delta(figure1, figure2)
-    #transformations['main_shape'] = transformation.main_shape(figure1, figure2)
+
+    if transformation.inner_shape(figure1, figure2) != None:
+        transformations['inner_shape'] = transformation.inner_shape(figure1, figure2)
+    if transformation.outer_shape(figure1, figure2) != None:
+        transformations['outer_shape'] = transformation.outer_shape(figure1, figure2)
 
     # algorithm called by shape_delta not original implementation - source is cited
     transformations['shape_delta'] = transformation.shape_delta(figure1, figure2)
-    transformations['equality'] = transformation.equality(figure1, figure2)
+    #transformations['equality'] = transformation.equality(figure1, figure2)
 
     return transformations
 
@@ -134,7 +138,7 @@ def agent_compare(init_network, H, V, problem, solution_num):
         result = float(sum(metrics))
         return result
 
-def get_image_op(figures):
+def get_image_op(figures, orientation):
 
     xor = transformation.op_transform(figures[0], figures[1], 'xor')
     xor_similarity = ('xor', algorithm.calc_rms(xor, figures[2]))
@@ -142,24 +146,30 @@ def get_image_op(figures):
     intersect = transformation.op_transform(figures[0], figures[1], 'intersect')
     intersect_similarity = ('intersect', algorithm.calc_rms(intersect, figures[2]))
 
+    subtract = transformation.op_transform(figures[0], figures[1], 'subtract')
+    subtract_similarity = ('subtract', algorithm.calc_rms(subtract, figures[2]))
+
     union = transformation.op_transform(figures[0], figures[1], 'union')
     union_similarity = ('union', algorithm.calc_rms(union, figures[2]))
 
-    comparisons = [xor_similarity, intersect_similarity, union_similarity]
+    modified_subtract = transformation.op_transform(figures[0], figures[1], 'modified-subtract-' + orientation)
+    modified_subtract_similarity = ('modified-subtract-' + orientation, algorithm.calc_rms(modified_subtract, figures[2]))
+
+    comparisons = [xor_similarity, intersect_similarity, union_similarity, subtract_similarity, modified_subtract_similarity]
     m = min(comparisons, key=lambda t: t[1])
 
     return m[0]
 
 def determine_single_image_op(figures):
 
-    abc_op = get_image_op([figures[0], figures[1], figures[2]])
-    adg_op = get_image_op([figures[0], figures[3], figures[6]])
+    abc_op = get_image_op([figures[0], figures[1], figures[2]], 'horizontal')
+    adg_op = get_image_op([figures[0], figures[3], figures[6]], 'vertical')
 
-    def_op = get_image_op([figures[3], figures[4], figures[5]])
-    beh_op = get_image_op([figures[1], figures[4], figures[7]])
+    def_op = get_image_op([figures[3], figures[4], figures[5]], 'horizontal')
+    beh_op = get_image_op([figures[1], figures[4], figures[7]], 'vertical')
 
     ops = [abc_op, adg_op, def_op, beh_op]
-
+    print(utility.most_common(ops))
     return utility.most_common(ops)
 
 
@@ -199,8 +209,10 @@ def generate_and_test(init_network, scores, figures, solutions, problem):
     for i, solution in enumerate(solutions):
 
         if problem.problemType == '3x3':
-            # compare init_network with generated solutions
 
+            global global_solution
+            global_solution = i + 1
+            # compare init_network with generated solutions
             H_A = create_relationship_diagram([figures[6], figures[7]], 'horizontal')
             H_B = create_relationship_diagram([figures[7], solution], 'horizontal')
             H = utility.union(H_A, H_B)
@@ -208,7 +220,7 @@ def generate_and_test(init_network, scores, figures, solutions, problem):
             V_A = create_relationship_diagram([figures[2], figures[5]], 'vertical')
             V_B = create_relationship_diagram([figures[5], solution], 'vertical')
             V = utility.union(V_A, V_B)
-            x = 1
+
         else:
             H = create_relationship_diagram([figures[2], solution], 'horizontal', '2x2')
             V = create_relationship_diagram([figures[1], solution], 'vertical', '2x2')
@@ -220,14 +232,19 @@ def generate_and_test(init_network, scores, figures, solutions, problem):
     print(scores)
 
     if 1.0 not in scores:
-        #m_union = comparison.compare_union(scores, figures, solutions, problem)
-        #m_diagonal = comparison.compare_diagonal(scores, figures, solutions, problem)
+        m_union = comparison.compare_union(scores, figures, solutions, problem)
+        m_diagonal = comparison.compare_diagonal(scores, figures, solutions, problem)
+        #init_set = [figures[0], figures[1], figures[2]]
+        #solution_set = [figures[6], figures[7]]
+        #row_statistics = comparison.compare_rows_or_cols(scores, init_set, solution_set, solutions)
 
-        m_statistics = comparison.compare_rows(scores, figures, solutions, problem)
+        #init_set = [figures[0], figures[3], figures[6]]
+        #solution_set = [figures[2], figures[5]]
+        #col_statistics = comparison.compare_rows_or_cols(scores, init_set, solution_set, solutions)
 
-        #possible_scores = [m_union, m_diagonal]
-        #m = min(possible_scores, key=lambda t: t[1])
-        scores = utility.get_score(m_statistics, problem)
+        possible_scores = [m_union, m_diagonal]
+        m = min(possible_scores, key=lambda t: t[1])
+        scores = utility.get_score(m, problem)
 
     return scores
 
@@ -246,13 +263,13 @@ class Agent:
         figures, solutions = setup(problem)
 
         scores = []
-        # compare diagonals
-        if transformation.equality(figures[0], figures[4]):
-            print('compare diagonals chosen')
-            m = comparison.compare_diagonal(scores, figures, solutions, problem)
-            scores = utility.get_score(m, problem)
+        # # compare diagonals
+        # if transformation.equality(figures[0], figures[4]):
+        #     print('compare diagonals chosen')
+        #     m = comparison.compare_diagonal(scores, figures, solutions, problem)
+        #     scores = utility.get_score(m, problem)
 
-        elif 'E' in problem.name.split(' ')[2]:
+        if 'E' in problem.name.split(' ')[2]:
             print('xor, union, intersect solver')
             scores = image_op_solver(figures, solutions, problem)
         # standard generate and test
