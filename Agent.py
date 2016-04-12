@@ -61,9 +61,8 @@ def get_transformation(figure1, figure2, orientation, problemType):
 
     transformations = {}
 
-    #transformations['alignment'] = transformation.alignment(figure1, figure2, orientation, problemType)
     transformations['size'] = transformation.size_comparison(figure1, figure2)
-    transformations['fill_delta'] = transformation.fill_delta(figure1, figure2)
+    #transformations['fill_delta'] = transformation.fill_delta(figure1, figure2)
 
     if transformation.inner_shape(figure1, figure2) != None:
         transformations['inner_shape'] = transformation.inner_shape(figure1, figure2)
@@ -72,7 +71,6 @@ def get_transformation(figure1, figure2, orientation, problemType):
 
     # algorithm called by shape_delta not original implementation - source is cited
     transformations['shape_delta'] = transformation.shape_delta(figure1, figure2)
-    #transformations['equality'] = transformation.equality(figure1, figure2)
 
     return transformations
 
@@ -196,11 +194,10 @@ def image_op_solver(figures, solutions, problem):
         x = algorithm.calc_rms(vertical_tester, solution)
         vertical_scores.append( (i, x) )
 
-
     m_horizontal = min(horizontal_scores, key=lambda t: t[1])
     m_vertical = min(vertical_scores, key=lambda t: t[1])
 
-    if m_horizontal[0] == m_vertical[0]:
+    if m_horizontal[0] == m_vertical[0] or operation == 'modified-subtract-horizontal':
         scores = utility.get_score(m_horizontal, problem)
         return scores
     else:
@@ -237,19 +234,21 @@ def generate_and_test(init_network, scores, figures, solutions, problem):
     print(scores)
 
     if 1.0 not in scores:
-        #m_union = comparison.compare_union(scores, figures, solutions, problem)
-        m_diagonal = comparison.compare_diagonal(scores, figures, solutions, problem)
-        #init_set = [figures[0], figures[1], figures[2]]
-        #solution_set = [figures[6], figures[7]]
-        #row_statistics = comparison.compare_rows_or_cols(scores, init_set, solution_set, solutions)
 
-        #init_set = [figures[0], figures[3], figures[6]]
-        #solution_set = [figures[2], figures[5]]
-        #col_statistics = comparison.compare_rows_or_cols(scores, init_set, solution_set, solutions)
+        if problem.problemType == '3x3':
+            m_diagonal = comparison.compare_diagonal(scores, figures, solutions, problem)
+            print('comparing diagonals to finalize score')
 
-        possible_scores = [m_diagonal]
-        m = min(possible_scores, key=lambda t: t[1])
-        scores = utility.get_score(m, problem)
+            possible_scores = [m_diagonal]
+            m = min(possible_scores, key=lambda t: t[1])
+            scores = utility.get_score(m, problem)
+        else:
+            m_union = comparison.compare_union(scores, figures, solutions, problem)
+            print('comparing union to finalize score')
+
+            possible_scores = [m_union]
+            m = min(possible_scores, key=lambda t: t[1])
+            scores = utility.get_score(m, problem)
 
     return scores
 
@@ -269,9 +268,15 @@ class Agent:
 
         scores = []
         # compare diagonals
-        if transformation.equality(figures[0], figures[4]) and transformation.equality(figures[1], figures[5]) and transformation.equality(figures[3], figures[7]):
-            print('compare diagonals chosen')
+        if problem.problemType == '3x3' and transformation.equality(figures[0], figures[4]) \
+                and transformation.equality(figures[1], figures[5]) \
+                and transformation.equality(figures[3], figures[7]):
+            print('diagonal production rule chosen')
             m = comparison.compare_diagonal(scores, figures, solutions, problem)
+            scores = utility.get_score(m, problem)
+        elif comparison.compare_top_corners(figures) and comparison.compare_bottom_bc_ef(figures):
+            print('top shape / bottom shape production rule chosen')
+            m = comparison.compare_top_bottom(scores, figures, solutions, problem)
             scores = utility.get_score(m, problem)
         elif 'E' in problem.name.split(' ')[2]:
             print('xor, union, intersect solver')

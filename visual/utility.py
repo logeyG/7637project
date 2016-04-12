@@ -97,7 +97,6 @@ def convert_to_easy_array(pixels):
     nodes = []
     for x in range(184):
         for y in range(184):
-
             if pixels[x, y] == (0, 0, 0, 255):  # black pixel
                 nodes.append((x, y))
 

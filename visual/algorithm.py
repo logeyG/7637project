@@ -6,7 +6,6 @@ import math
 import numpy
 
 
-
 class Region():
     # solution modified from this StackOverflow answer:
     # http://stackoverflow.com/questions/1989987/my-own-ocr-program-in-python
@@ -74,6 +73,26 @@ def get_center(blobs):
         closest.append(nodes[utility.closest_node((92, 92), nodes)])
 
     return utility.closest_node((92, 92), closest)
+
+def get_top(blobs):
+
+    closest = []
+
+    for blob in blobs:
+        nodes = utility.convert_to_easy_array(blob.load())
+        closest.append(nodes[utility.closest_node((92, 92), nodes)])
+
+    return utility.closest_node((0, 0), closest)
+
+def get_bottom(blobs):
+
+    closest = []
+
+    for blob in blobs:
+        nodes = utility.convert_to_easy_array(blob.load())
+        closest.append(nodes[utility.closest_node((92, 92), nodes)])
+
+    return utility.closest_node((0, 184), closest)
 
 def write_blobs(blobs):
 
@@ -167,7 +186,6 @@ def get_blobs(regions):
         blobs.append(blob)
 
     return blobs
-
 
 def ncc(im1, im2):
 

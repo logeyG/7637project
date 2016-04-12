@@ -1,12 +1,52 @@
 from PIL import Image
 from visual import utility
-from visual import transformation
 from visual import algorithm
+from visual import transformation
 
-def compare_corners(scores, figures, solutions, problem):
+def compare_top_corners(figures):
+
+    a_blobs = algorithm.get_blobs(algorithm.find_regions(figures[0]))
+    c_blobs = algorithm.get_blobs(algorithm.find_regions(figures[2]))
+
+    d_blobs = algorithm.get_blobs(algorithm.find_regions(figures[3]))
+    f_blobs = algorithm.get_blobs(algorithm.find_regions(figures[5]))
+
+    if len(a_blobs) < 2 or len(c_blobs) < 2 or len(d_blobs) < 2 or len(f_blobs) < 2:
+        return False
+
+    if transformation.strict_equality(a_blobs[algorithm.get_top(a_blobs)], c_blobs[algorithm.get_top(c_blobs)]) \
+        and transformation.strict_equality(d_blobs[algorithm.get_top(d_blobs)], f_blobs[algorithm.get_top(f_blobs)]):
+        return True
+    else:
+        return False
+
+def compare_bottom_bc_ef(figures):
+
+    b_blobs = algorithm.get_blobs(algorithm.find_regions(figures[1]))
+    c_blobs = algorithm.get_blobs(algorithm.find_regions(figures[2]))
+
+    e_blobs = algorithm.get_blobs(algorithm.find_regions(figures[4]))
+    f_blobs = algorithm.get_blobs(algorithm.find_regions(figures[5]))
+
+    if len(b_blobs) < 2 or len(c_blobs) < 2 or len(e_blobs) < 2 or len(f_blobs) < 2:
+        return False
+
+    if transformation.strict_equality(b_blobs[algorithm.get_bottom(b_blobs)], c_blobs[algorithm.get_bottom(c_blobs)]) \
+        and transformation.strict_equality(e_blobs[algorithm.get_bottom(e_blobs)], f_blobs[algorithm.get_bottom(f_blobs)]):
+        return True
+    else:
+        return False
+
+def compare_top_bottom(scores, figures, solutions, problem):
 
     if not scores:
         scores = [.125, .125, .125, .125, .125, .125, .125, .125]
+
+    g_blobs = algorithm.get_blobs(algorithm.find_regions(figures[6]))
+    h_blobs = algorithm.get_blobs(algorithm.find_regions(figures[7]))
+
+    top_g = g_blobs[algorithm.get_top(g_blobs)]
+    bottom_h = h_blobs[algorithm.get_bottom(h_blobs)]
 
     possible_answers = []
     for i, score in enumerate(scores):
@@ -15,7 +55,12 @@ def compare_corners(scores, figures, solutions, problem):
 
     comparisons = []
     for answer in possible_answers:
-        x = ( answer[0], algorithm.calc_rms(figures[0], answer[1]) )
+
+        solution_blobs = algorithm.get_blobs(algorithm.find_regions(answer[1]))
+        top_solution = solution_blobs[algorithm.get_top(solution_blobs)]
+        bottom_solution = solution_blobs[algorithm.get_bottom(solution_blobs)]
+
+        x = ( answer[0], algorithm.calc_rms(top_g, top_solution) + algorithm.calc_rms(bottom_h, bottom_solution))
         comparisons.append(x)
 
     m = min(comparisons, key=lambda t: t[1])
@@ -89,24 +134,3 @@ def compare_union(scores, figures, solutions, problem):
     m = min(comparisons, key=lambda t: t[1])
 
     return m
-
-def compare_reflected(scores, figures, solutions, problem):
-
-    if not scores:
-        scores = [.125, .125, .125, .125, .125, .125, .125, .125]
-
-    for i, score in enumerate(scores):
-
-        if score != 0.0:
-            reflected_test = transformation.reflected_within_single(figures[6], solutions[i])
-
-            if reflected_test == (True, True):
-                if problem.problemType == '3x3':
-                    scores = [0, 0, 0, 0, 0, 0, 0, 0]
-                else:
-                    scores = [0, 0, 0, 0, 0, 0]
-
-                scores[i] = 1
-                return scores
-
-    return scores
